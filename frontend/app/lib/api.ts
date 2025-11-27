@@ -329,7 +329,8 @@ export async function deletePromptBinding(bindingId: number): Promise<void> {
 }
 
 export interface PromptPreviewRequest {
-  promptTemplateKey: string
+  templateText?: string  // Optional: Use this template text directly (for preview before save)
+  promptTemplateKey?: string  // Optional: Fallback to database template if templateText not provided
   accountIds: number[]
   symbols?: string[]
 }

@@ -229,7 +229,8 @@ def preview_prompt(
 
     Payload:
     {
-        "promptTemplateKey": "pro",
+        "templateText": "...",  # Optional: Use this template text directly (for preview before save)
+        "promptTemplateKey": "pro",  # Optional: Fallback to database template if templateText not provided
         "accountIds": [1, 2],
         "symbols": ["BTC", "ETH"]
     }
@@ -265,6 +266,8 @@ def preview_prompt(
 
     logger = logging.getLogger(__name__)
 
+    # Priority: use templateText if provided (for preview before save), otherwise query from database
+    template_text = payload.get("templateText")
     prompt_key = payload.get("promptTemplateKey", "default")
     account_ids = payload.get("accountIds", [])
 
@@ -283,10 +286,16 @@ def preview_prompt(
     if not account_ids:
         raise HTTPException(status_code=400, detail="At least one account must be selected")
 
-    # Get template
-    template = prompt_repo.get_template_by_key(db, prompt_key)
-    if not template:
-        raise HTTPException(status_code=404, detail=f"Prompt template '{prompt_key}' not found")
+    # Get template text: use provided templateText or query from database
+    if not template_text:
+        # Fallback: query from database using promptTemplateKey
+        template = prompt_repo.get_template_by_key(db, prompt_key)
+        if not template:
+            raise HTTPException(status_code=404, detail=f"Prompt template '{prompt_key}' not found")
+        template_text = template.template_text
+        logger.info(f"Preview: Using database template '{prompt_key}'")
+    else:
+        logger.info(f"Preview: Using provided templateText (length: {len(template_text)})")
 
     # Get news
     try:
@@ -417,12 +426,12 @@ def preview_prompt(
             symbol_order=active_symbols,
             sampling_interval=sampling_interval,
             environment=hyperliquid_environment or "mainnet",
-            template_text=template.template_text,
+            template_text=template_text,
         )
         context["sampling_data"] = sampling_data
 
         try:
-            filled_prompt = template.template_text.format_map(SafeDict(context))
+            filled_prompt = template_text.format_map(SafeDict(context))
         except Exception as err:
             logger.error(f"Failed to fill prompt for {account.name}: {err}")
             filled_prompt = f"Error filling prompt: {err}"

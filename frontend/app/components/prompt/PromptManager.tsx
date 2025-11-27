@@ -598,6 +598,7 @@ export default function PromptManager() {
           onOpenChange={setPreviewDialogOpen}
           templateKey={selectedTemplate.key}
           templateName={selectedTemplate.name}
+          templateText={templateDraft}
         />
       )}
 
