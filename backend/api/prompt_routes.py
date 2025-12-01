@@ -564,17 +564,6 @@ def get_conversation_messages_api(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Check premium subscription
-    subscription = db.query(UserSubscription).filter(
-        UserSubscription.user_id == user.id
-    ).first()
-
-    if not subscription or subscription.subscription_type != "premium":
-        raise HTTPException(
-            status_code=403,
-            detail="This feature is only available for premium members"
-        )
-
     messages = get_conversation_messages(
         db=db,
         conversation_id=conversation_id,
