@@ -24,7 +24,9 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer
+  ResponsiveContainer,
+  Customized,
+  Brush
 } from 'recharts'
 import { Card } from '@/components/ui/card'
 import { getModelChartLogo, getModelColor } from '../portfolio/logoAssets'
@@ -41,11 +43,21 @@ interface HyperliquidAssetData {
   wallet_address?: string | null
 }
 
+export interface TradeMarker {
+  trade_id: number
+  trade_time: string
+  side: string // 'BUY' | 'SELL' | 'CLOSE'
+  symbol: string
+  account_id: number
+  price?: number
+}
+
 interface HyperliquidAssetChartProps {
   accountId: number
   refreshTrigger?: number
   environment?: HyperliquidEnvironment
   selectedAccount?: number | 'all'
+  trades?: TradeMarker[]
 }
 
 export default function HyperliquidAssetChart({
@@ -53,6 +65,7 @@ export default function HyperliquidAssetChart({
   refreshTrigger,
   environment,
   selectedAccount,
+  trades,
 }: HyperliquidAssetChartProps) {
   const [data, setData] = useState<HyperliquidAssetData[]>([])
   const [loading, setLoading] = useState(true)
@@ -60,6 +73,12 @@ export default function HyperliquidAssetChart({
   const [logoPulseMap, setLogoPulseMap] = useState<Map<number, number>>(new Map())
   const [timeRange, setTimeRange] = useState<'7d' | '15d' | '1m' | '3m' | 'all'>('7d')
   const fetchingRef = useRef(false)
+
+  // Brush state - preserve zoom level across data refreshes
+  const [brushRange, setBrushRange] = useState<{ startIndex?: number; endIndex?: number }>({})
+  const handleBrushChange = useCallback((range: { startIndex?: number; endIndex?: number }) => {
+    setBrushRange(range)
+  }, [])
 
   // Fetch Hyperliquid asset curve data (5-minute bucketed)
   const fetchData = useCallback(async () => {
@@ -188,6 +207,148 @@ export default function HyperliquidAssetChart({
     }
   }, [data])
 
+  // Process trade markers - snap to nearest 5-minute bucket
+  const tradeMarkers = useMemo(() => {
+    if (!trades?.length || !chartData.length) return []
+
+    const timestamps = chartData.map(d => d.timestamp)
+    const markers: Array<{
+      trade_id: number
+      timestamp: number
+      datetime_str: string
+      side: string
+      symbol: string
+      price?: number
+      chartIndex: number
+    }> = []
+
+    trades.forEach(trade => {
+      if (!trade.trade_time) return
+      // Filter by selected account
+      if (selectedAccount && selectedAccount !== 'all' && trade.account_id !== selectedAccount) return
+
+      // Convert trade_time ISO string to Unix timestamp
+      const tradeTs = Math.floor(new Date(trade.trade_time + (trade.trade_time.includes('Z') ? '' : 'Z')).getTime() / 1000)
+
+      // Find nearest 5-minute bucket
+      let nearestIdx = 0
+      let minDiff = Math.abs(timestamps[0] - tradeTs)
+      for (let i = 1; i < timestamps.length; i++) {
+        const diff = Math.abs(timestamps[i] - tradeTs)
+        if (diff < minDiff) {
+          minDiff = diff
+          nearestIdx = i
+        }
+      }
+
+      // Only include if within 5 minutes (300 seconds) of a data point
+      if (minDiff <= 300) {
+        markers.push({
+          trade_id: trade.trade_id,
+          timestamp: timestamps[nearestIdx],
+          datetime_str: chartData[nearestIdx].datetime_str,
+          side: trade.side,
+          symbol: trade.symbol,
+          price: trade.price,
+          chartIndex: nearestIdx
+        })
+      }
+    })
+
+    return markers
+  }, [trades, chartData, selectedAccount])
+
+  // Trade marker colors matching Modelchat
+  const getTradeMarkerStyle = (side: string) => {
+    switch (side.toUpperCase()) {
+      case 'BUY':
+        return { bg: '#10B981', letter: 'B' } // emerald-500
+      case 'SELL':
+        return { bg: '#EF4444', letter: 'S' } // red-500
+      case 'CLOSE':
+        return { bg: '#EF4444', letter: 'C' } // red-500 (same as SELL)
+      case 'HOLD':
+        return { bg: '#6B7280', letter: 'H' } // gray-500
+      default:
+        return { bg: '#F97316', letter: '?' } // orange-500
+    }
+  }
+
+  // Hover tooltip state for trade markers
+  const [hoveredTrade, setHoveredTrade] = useState<{
+    x: number
+    y: number
+    side: string
+    symbol: string
+    price?: number
+  } | null>(null)
+
+  // Render trade markers on chart
+  const renderTradeMarkers = useCallback((props: any) => {
+    const { xAxisMap, yAxisMap } = props
+    if (!xAxisMap || !yAxisMap || !tradeMarkers.length) return null
+
+    const xAxis = Object.values(xAxisMap)[0] as any
+    const yAxis = Object.values(yAxisMap)[0] as any
+    if (!xAxis?.scale || !yAxis?.scale) return null
+
+    return (
+      <g className="trade-markers">
+        {tradeMarkers.map((marker, idx) => {
+          const dataPoint = chartData[marker.chartIndex]
+          if (!dataPoint) return null
+
+          const x = xAxis.scale(dataPoint.datetime_str)
+          // Get y value from first account's data at this point
+          const firstAccount = accountsData[0]
+          const yValue = firstAccount ? dataPoint[firstAccount.username] : null
+          if (yValue == null || x == null) return null
+
+          const y = yAxis.scale(yValue)
+          const { bg, letter } = getTradeMarkerStyle(marker.side)
+          const size = 18
+
+          return (
+            <g
+              key={`trade-${marker.trade_id}-${idx}`}
+              style={{ cursor: 'pointer' }}
+              onMouseEnter={() => setHoveredTrade({
+                x,
+                y,
+                side: marker.side,
+                symbol: marker.symbol,
+                price: marker.price
+              })}
+              onMouseLeave={() => setHoveredTrade(null)}
+            >
+              <circle
+                cx={x}
+                cy={y}
+                r={size / 2}
+                fill={bg}
+                stroke="#fff"
+                strokeWidth={2}
+                style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.2))' }}
+              />
+              <text
+                x={x}
+                y={y}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill="#fff"
+                fontSize={10}
+                fontWeight="bold"
+                style={{ pointerEvents: 'none' }}
+              >
+                {letter}
+              </text>
+            </g>
+          )
+        })}
+      </g>
+    )
+  }, [tradeMarkers, chartData, accountsData])
+
   // Terminal dot renderer with logo and value
   const renderTerminalDot = useCallback(
     (account: { account_id: number; username: string; logo: { src: string; alt: string; color?: string } }) =>
@@ -196,9 +357,20 @@ export default function HyperliquidAssetChart({
         if (cx == null || cy == null || index == null || !payload) return null
         if (chartData.length === 0) return null
 
-        // Find the last data point where this account has a value
-        const lastIndexWithValue = chartData.findLastIndex(point => typeof point[account.username] === 'number')
-        if (lastIndexWithValue === -1 || index !== lastIndexWithValue) return null
+        // Determine visible range from brush, or use full data range
+        const visibleStart = brushRange.startIndex ?? 0
+        const visibleEnd = brushRange.endIndex ?? chartData.length - 1
+
+        // Find the last data point within visible range where this account has a value
+        let lastVisibleIndex = -1
+        for (let i = visibleEnd; i >= visibleStart; i--) {
+          if (typeof chartData[i]?.[account.username] === 'number') {
+            lastVisibleIndex = i
+            break
+          }
+        }
+
+        if (lastVisibleIndex === -1 || index !== lastVisibleIndex) return null
 
         const value = payload[account.username]
         if (typeof value !== 'number') return null
@@ -276,7 +448,7 @@ export default function HyperliquidAssetChart({
           </g>
         )
       },
-    [chartData, logoPulseMap]
+    [chartData, logoPulseMap, brushRange]
   )
 
   if (loading && data.length === 0) {
@@ -417,8 +589,50 @@ export default function HyperliquidAssetChart({
                 isAnimationActive={false}
               />
             ))}
+
+            {/* Trade markers (B/S/C circles) */}
+            {tradeMarkers.length > 0 && (
+              <Customized component={renderTradeMarkers} />
+            )}
+
+            {/* Brush for zooming/panning */}
+            <Brush
+              dataKey="datetime_str"
+              height={30}
+              stroke="#8884d8"
+              fill="#f5f5f5"
+              onChange={handleBrushChange}
+              startIndex={brushRange.startIndex !== undefined ? Math.min(brushRange.startIndex, chartData.length - 1) : undefined}
+              endIndex={brushRange.endIndex !== undefined ? Math.min(brushRange.endIndex, chartData.length - 1) : undefined}
+              tickFormatter={(value) => {
+                if (!value) return ''
+                const isoString = value.replace(' ', 'T') + 'Z'
+                return formatDateTime(isoString, { style: 'short' })
+              }}
+            />
           </ComposedChart>
         </ResponsiveContainer>
+
+        {/* Trade marker tooltip */}
+        {hoveredTrade && (
+          <div
+            className="absolute pointer-events-none bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-xs z-20"
+            style={{
+              left: hoveredTrade.x + 15,
+              top: hoveredTrade.y - 40,
+              transform: 'translateX(-50%)'
+            }}
+          >
+            <div className="font-bold text-gray-800">
+              {hoveredTrade.side} {hoveredTrade.symbol}
+            </div>
+            {hoveredTrade.price != null && (
+              <div className="text-gray-600">
+                ${hoveredTrade.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </Card>
   )

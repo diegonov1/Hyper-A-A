@@ -713,16 +713,15 @@ export default function AlphaArenaFeed({
                             trade.side === 'BUY'
                               ? 'bg-emerald-100 text-emerald-800'
                               : trade.side === 'CLOSE'
-                              ? 'bg-orange-100 text-orange-800'
-                              : 'bg-red-100 text-red-800'
+                              ? 'bg-red-100 text-red-800'
+                              : trade.side === 'HOLD'
+                              ? 'bg-gray-200 text-gray-800'
+                              : 'bg-orange-100 text-orange-800'
                           }`}>
                             {trade.side}
                           </span>
                           <span>trade on</span>
-                          <span className="flex items-center gap-2 font-semibold">
-                            {renderSymbolBadge(trade.symbol)}
-                            {trade.symbol}
-                          </span>
+                          <span className="font-semibold">{trade.symbol}</span>
                           <span>!</span>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-muted-foreground">
@@ -813,12 +812,20 @@ export default function AlphaArenaFeed({
                           </div>
                           <span>{formatDate(entry.decision_time)}</span>
                         </div>
-                        <div className="text-sm font-medium text-foreground">
-                          {(entry.operation || 'UNKNOWN').toUpperCase()} {entry.symbol && (
-                            <span className="inline-flex items-center gap-1">
-                              {renderSymbolBadge(entry.symbol, 'sm')}
-                              {entry.symbol}
-                            </span>
+                        <div className="text-sm font-medium text-foreground flex items-center gap-2">
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${
+                            entry.operation?.toUpperCase() === 'BUY'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : entry.operation?.toUpperCase() === 'CLOSE'
+                              ? 'bg-red-100 text-red-800'
+                              : entry.operation?.toUpperCase() === 'HOLD'
+                              ? 'bg-gray-200 text-gray-800'
+                              : 'bg-orange-100 text-orange-800'
+                          }`}>
+                            {(entry.operation || 'UNKNOWN').toUpperCase()}
+                          </span>
+                          {entry.symbol && (
+                            <span className="font-semibold">{entry.symbol}</span>
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground">
@@ -1064,8 +1071,7 @@ export default function AlphaArenaFeed({
                                   <tr key={`${position.symbol}-${idx}`}>
                                     <td className="px-4 py-2 font-semibold text-foreground">{position.side}</td>
                                     <td className="px-4 py-2">
-                                      <div className="flex items-center gap-2 font-semibold text-foreground">
-                                        {renderSymbolBadge(position.symbol, 'sm')}
+                                      <div className="font-semibold text-foreground">
                                         {position.symbol}
                                       </div>
                                       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{position.market}</div>

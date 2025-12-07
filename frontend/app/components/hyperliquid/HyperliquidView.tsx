@@ -15,10 +15,10 @@
  */
 import React, { useState, useEffect } from 'react'
 import { useTradingMode } from '@/contexts/TradingModeContext'
-import { getArenaPositions } from '@/lib/api'
+import { getArenaPositions, getArenaTrades, ArenaTrade } from '@/lib/api'
 import AlphaArenaFeed from '@/components/portfolio/AlphaArenaFeed'
 import HyperliquidMultiAccountSummary from '@/components/portfolio/HyperliquidMultiAccountSummary'
-import HyperliquidAssetChart from './HyperliquidAssetChart'
+import HyperliquidAssetChart, { TradeMarker } from './HyperliquidAssetChart'
 
 interface HyperliquidViewProps {
   wsRef?: React.MutableRefObject<WebSocket | null>
@@ -31,6 +31,7 @@ export default function HyperliquidView({ wsRef, refreshKey = 0 }: HyperliquidVi
   const [positionsData, setPositionsData] = useState<any>(null)
   const [chartRefreshKey, setChartRefreshKey] = useState(0)
   const [selectedAccount, setSelectedAccount] = useState<number | 'all'>('all')
+  const [tradeMarkers, setTradeMarkers] = useState<TradeMarker[]>([])
   const environment = tradingMode === 'testnet' || tradingMode === 'mainnet' ? tradingMode : undefined
 
   // Load data from APIs
@@ -38,8 +39,21 @@ export default function HyperliquidView({ wsRef, refreshKey = 0 }: HyperliquidVi
     const loadData = async () => {
       try {
         setLoading(true)
-        const positions = await getArenaPositions({ trading_mode: tradingMode })
+        const [positions, tradesRes] = await Promise.all([
+          getArenaPositions({ trading_mode: tradingMode }),
+          getArenaTrades({ trading_mode: tradingMode, limit: 200 })
+        ])
         setPositionsData(positions)
+        // Convert trades to TradeMarker format
+        const markers: TradeMarker[] = (tradesRes.trades || []).map((t: ArenaTrade) => ({
+          trade_id: t.trade_id,
+          trade_time: t.trade_time || '',
+          side: t.side,
+          symbol: t.symbol,
+          account_id: t.account_id,
+          price: t.price
+        }))
+        setTradeMarkers(markers)
       } catch (error) {
         console.error('Failed to load Hyperliquid data:', error)
       } finally {
@@ -78,6 +92,7 @@ export default function HyperliquidView({ wsRef, refreshKey = 0 }: HyperliquidVi
               refreshTrigger={chartRefreshKey}
               environment={environment}
               selectedAccount={selectedAccount}
+              trades={tradeMarkers}
             />
           ) : (
             <div className="bg-card border border-border rounded-lg h-full flex items-center justify-center">
