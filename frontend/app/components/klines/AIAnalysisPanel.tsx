@@ -49,9 +49,21 @@ interface AIAnalysisPanelProps {
   indicators: Record<string, any>
   marketData: any
   selectedIndicators?: string[]
+  selectedFlowIndicators?: string[]
   onAnalysisComplete?: () => void
   // 允许上层传入账户列表，暂无使用，预留扩展
   accounts?: AITrader[]
+}
+
+// Flow indicator key to display label mapping
+const FLOW_INDICATOR_LABELS: Record<string, string> = {
+  cvd: 'CVD',
+  taker_volume: 'Taker Vol',
+  oi: 'OI',
+  oi_delta: 'OI Delta',
+  funding: 'Funding',
+  depth_ratio: 'Depth',
+  order_imbalance: 'Imbalance',
 }
 
 interface AnalysisResult {
@@ -74,6 +86,7 @@ export default function AIAnalysisPanel({
   indicators,
   marketData,
   selectedIndicators = [],
+  selectedFlowIndicators = [],
   onAnalysisComplete
 }: AIAnalysisPanelProps) {
   const [selectedTrader, setSelectedTrader] = useState<string>('')
@@ -236,12 +249,14 @@ export default function AIAnalysisPanel({
         },
         market_data: marketDataPayload,
         positions: positionPayload,
+        selected_flow_indicators: selectedFlowIndicators,
         user_message: userMessage.trim() || null,
         prompt_snapshot: JSON.stringify({
           symbol,
           period,
           kline_limit: klineLimit,
           indicators: Object.keys(indicators || {}),
+          flow_indicators: selectedFlowIndicators,
           positions: positionPayload,
           market_data: marketDataPayload,
           user_message: userMessage.trim() || null
@@ -436,7 +451,25 @@ export default function AIAnalysisPanel({
           </div>
         ) : (
           <p className="text-[11px] text-muted-foreground">
-            Select indicators in “Technical Indicators” to include them in AI analysis.
+            Select indicators in "Technical Indicators" to include them in AI analysis.
+          </p>
+        )}
+      </div>
+
+      {/* Selected Market Flow Indicators hint */}
+      <div className="space-y-1">
+        <div className="text-xs text-muted-foreground">Market Flow Included</div>
+        {selectedFlowIndicators.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {selectedFlowIndicators.map((key) => (
+              <Badge key={key} className="text-[11px] px-2 py-1 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                {FLOW_INDICATOR_LABELS[key] || key}
+              </Badge>
+            ))}
+          </div>
+        ) : (
+          <p className="text-[11px] text-muted-foreground">
+            Select indicators in "Market Flow" to include them in AI analysis.
           </p>
         )}
       </div>

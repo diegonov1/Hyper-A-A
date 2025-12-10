@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from database.models import Account, KlineAIAnalysisLog
 from config.prompt_templates import KLINE_ANALYSIS_PROMPT_TEMPLATE
 from services.ai_decision_service import build_chat_completion_endpoints, _extract_text_from_message
+from services.market_flow_indicators import get_flow_indicators_for_prompt
 
 
 logger = logging.getLogger(__name__)
@@ -215,6 +216,149 @@ def _format_indicators_summary(indicators: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _format_flow_indicators_summary(
+    db: Session,
+    symbol: str,
+    period: str,
+    selected_flow_indicators: List[str]
+) -> str:
+    """Format market flow indicators into a readable summary for AI analysis.
+
+    Fetches data from database using get_flow_indicators_for_prompt.
+    """
+    if not selected_flow_indicators:
+        return ""
+
+    # Map frontend indicator keys to backend indicator names
+    key_mapping = {
+        'cvd': 'CVD',
+        'taker_volume': 'TAKER',
+        'oi': 'OI',
+        'oi_delta': 'OI_DELTA',
+        'funding': 'FUNDING',
+        'depth_ratio': 'DEPTH',
+        'order_imbalance': 'IMBALANCE',
+    }
+
+    # Convert frontend keys to backend indicator names
+    backend_indicators = [key_mapping.get(k, k.upper()) for k in selected_flow_indicators]
+
+    # Fetch flow indicator data from database
+    try:
+        flow_data = get_flow_indicators_for_prompt(db, symbol, period, backend_indicators)
+    except Exception as e:
+        logger.error(f"Failed to fetch flow indicators: {e}")
+        return ""
+
+    if not flow_data:
+        return ""
+
+    lines = []
+    lines.append("**Market Flow Indicators:**")
+
+    # Format each indicator
+    for frontend_key in selected_flow_indicators:
+        backend_key = key_mapping.get(frontend_key, frontend_key.upper())
+        data = flow_data.get(backend_key)
+
+        if not data:
+            continue
+
+        if backend_key == 'CVD':
+            cvd_val = data.get('current')
+            if cvd_val is not None:
+                lines.append(f"- CVD (Cumulative Volume Delta): {_format_volume(cvd_val)}")
+                history = data.get('last_5', [])
+                if history:
+                    hist_str = ', '.join(_format_volume(v) for v in history)
+                    lines.append(f"  CVD last {len(history)}: {hist_str}")
+                cumulative = data.get('cumulative')
+                if cumulative is not None:
+                    lines.append(f"  Cumulative: {_format_volume(cumulative)}")
+
+        elif backend_key == 'TAKER':
+            buy = data.get('buy')
+            sell = data.get('sell')
+            ratio = data.get('ratio')
+            if buy is not None and sell is not None:
+                lines.append(f"- Taker Buy: {_format_volume(buy)} | Taker Sell: {_format_volume(sell)}")
+                if ratio is not None:
+                    lines.append(f"  Buy/Sell Ratio: {ratio:.2f}")
+
+        elif backend_key == 'OI':
+            oi_val = data.get('current')
+            if oi_val is not None:
+                lines.append(f"- Open Interest: {_format_volume(oi_val)}")
+                history = data.get('last_5', [])
+                if history:
+                    hist_str = ', '.join(_format_volume(v) for v in history)
+                    lines.append(f"  OI last {len(history)}: {hist_str}")
+
+        elif backend_key == 'OI_DELTA':
+            delta = data.get('current')
+            if delta is not None:
+                lines.append(f"- OI Delta ({period}): {delta:+.2f}%")
+                history = data.get('last_5', [])
+                if history:
+                    hist_str = ', '.join(f"{v:+.2f}%" for v in history)
+                    lines.append(f"  OI Delta last {len(history)}: {hist_str}")
+
+        elif backend_key == 'FUNDING':
+            rate = data.get('current')
+            if rate is not None:
+                lines.append(f"- Funding Rate: {rate:.4f}%")
+                annualized = data.get('annualized')
+                if annualized is not None:
+                    lines.append(f"  Annualized: {annualized:.2f}%")
+                history = data.get('last_5', [])
+                if history:
+                    hist_str = ', '.join(f"{v:.4f}%" for v in history)
+                    lines.append(f"  Funding last {len(history)}: {hist_str}")
+
+        elif backend_key == 'DEPTH':
+            ratio = data.get('ratio')
+            bid = data.get('bid')
+            ask = data.get('ask')
+            if ratio is not None:
+                lines.append(f"- Depth Ratio (Bid/Ask): {ratio:.2f}")
+                if bid is not None and ask is not None:
+                    lines.append(f"  Bid Depth: {_format_volume(bid)} | Ask Depth: {_format_volume(ask)}")
+                spread = data.get('spread')
+                if spread is not None:
+                    lines.append(f"  Spread: {spread:.4f}")
+
+        elif backend_key == 'IMBALANCE':
+            imb = data.get('current')
+            if imb is not None:
+                lines.append(f"- Order Imbalance: {imb:+.3f}")
+                history = data.get('last_5', [])
+                if history:
+                    hist_str = ', '.join(f"{v:+.3f}" for v in history)
+                    lines.append(f"  Imbalance last {len(history)}: {hist_str}")
+
+    if len(lines) <= 1:
+        return ""
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _format_volume(value: float) -> str:
+    """Format volume with appropriate unit (K, M, B)"""
+    if value is None:
+        return "N/A"
+    abs_val = abs(value)
+    sign = "+" if value >= 0 else "-"
+    if abs_val >= 1_000_000_000:
+        return f"{sign}${abs_val/1_000_000_000:.2f}B"
+    elif abs_val >= 1_000_000:
+        return f"{sign}${abs_val/1_000_000:.2f}M"
+    elif abs_val >= 1_000:
+        return f"{sign}${abs_val/1_000:.2f}K"
+    else:
+        return f"{sign}${abs_val:.2f}"
+
+
 def analyze_kline_chart(
     db: Session,
     account: Account,
@@ -227,6 +371,7 @@ def analyze_kline_chart(
     positions: List[Dict[str, Any]] = None,
     kline_limit: Optional[int] = None,
     user_id: int = 1,
+    selected_flow_indicators: List[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """
     Perform AI analysis on K-line chart data
@@ -265,6 +410,9 @@ def analyze_kline_chart(
         klines_summary = _format_klines_summary(display_klines)
         indicators_summary = _format_indicators_summary(indicators)
         positions_summary = _format_positions_summary(positions or [])
+        flow_indicators_summary = _format_flow_indicators_summary(
+            db, symbol, period, selected_flow_indicators or []
+        )
 
         context = {
             "symbol": symbol,
@@ -278,6 +426,7 @@ def analyze_kline_chart(
             "kline_count": len(display_klines),
             "klines_summary": klines_summary,
             "indicators_summary": indicators_summary,
+            "flow_indicators_summary": flow_indicators_summary,
             "positions_summary": positions_summary,
             "user_message": user_message if user_message else "No specific question provided. Please provide a general analysis.",
             "additional_instructions": "",

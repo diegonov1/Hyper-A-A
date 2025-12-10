@@ -111,6 +111,9 @@ Funding Rate: {funding_rate}%
 === TECHNICAL INDICATORS ===
 {indicators_summary}
 
+=== MARKET FLOW INDICATORS ===
+{flow_indicators_summary}
+
 === POSITIONS ===
 {positions_summary}
 

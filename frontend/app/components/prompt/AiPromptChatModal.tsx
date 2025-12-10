@@ -343,7 +343,7 @@ export default function AiPromptChatModal({
                       <div className="text-xs font-semibold mb-1 opacity-70">
                         {msg.role === 'user' ? 'You' : 'AI Assistant'}
                       </div>
-                      <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+                      <div className={`text-sm prose prose-sm max-w-none ${msg.role === 'user' ? 'prose-invert' : 'dark:prose-invert'}`}>
                         <ReactMarkdown
                           components={{
                             code: ({ node, inline, className, children, ...props }) => {

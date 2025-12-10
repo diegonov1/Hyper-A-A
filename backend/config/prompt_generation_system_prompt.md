@@ -90,6 +90,24 @@ Available indicators:
 - `{BTC_VWAP_15m}` - Volume Weighted Average Price for institutional trading levels
 - `{BTC_OBV_15m}` - On-Balance Volume for volume trend confirmation
 
+### Market Flow Indicator Variables
+Format: `{SYMBOL_INDICATOR_PERIOD}` (Supported periods: 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h)
+
+**Order Flow Indicators:**
+- `{BTC_CVD_15m}` - Cumulative Volume Delta (Taker Buy - Sell volume), shows buying/selling pressure
+- `{BTC_TAKER_15m}` - Taker Buy/Sell Volume and Ratio, indicates aggressive market participants
+
+**Open Interest Indicators:**
+- `{BTC_OI_15m}` - Open Interest (absolute value in USD), shows total market exposure
+- `{BTC_OI_DELTA_15m}` - Open Interest Change %, indicates new positions entering/exiting
+
+**Funding & Sentiment:**
+- `{BTC_FUNDING_15m}` - Funding Rate (current and annualized), shows long/short sentiment imbalance
+
+**Order Book Indicators:**
+- `{BTC_DEPTH_15m}` - Order Book Depth Ratio (Bid/Ask), shows support/resistance strength
+- `{BTC_IMBALANCE_15m}` - Order Book Imbalance (-1 to 1), indicates directional pressure
+
 ### Position & Account Variables
 - `{positions_detail}` - Detailed information about all current open positions
 - `{recent_trades_summary}` - Summary of recently closed trades (helps avoid flip-flop behavior)
@@ -556,7 +574,9 @@ Does this match your expectations? Or would you like to adjust any of these assu
 - **Mean Reversion**: RSI14, RSI7, STOCH, Bollinger Bands for oversold/overbought levels
 - **Breakout**: ATR14 for volatility measurement, BOLL for breakout levels, OBV for volume confirmation
 - **Volume-Based**: VWAP for institutional levels, OBV for trend confirmation
-- **Multi-factor**: Combine 3-4 indicators from different categories (e.g., EMA + RSI + VWAP + ATR)
+- **Order Flow Strategies**: CVD for buying/selling pressure, TAKER for aggressive participants, OI_DELTA for position changes
+- **Sentiment Strategies**: FUNDING for long/short imbalance, DEPTH/IMBALANCE for order book pressure
+- **Multi-factor**: Combine 3-4 indicators from different categories (e.g., EMA + RSI + CVD + FUNDING)
 
 ## Remember
 

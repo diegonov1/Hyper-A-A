@@ -597,6 +597,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
               indicators={indicatorsData}
               marketData={getSymbolMarketData(selectedSymbol)}
               selectedIndicators={selectedIndicators}
+              selectedFlowIndicators={selectedFlowIndicators}
               onAnalysisComplete={() => {}}
             />
           </CardContent>

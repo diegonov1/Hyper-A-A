@@ -57,6 +57,7 @@ class AIAnalysisRequest(BaseModel):
     positions: Optional[List[Dict[str, Any]]] = []
     user_message: Optional[str] = None
     prompt_snapshot: Optional[str] = None
+    selected_flow_indicators: Optional[List[str]] = []
 
 
 class AIAnalysisResponse(BaseModel):
@@ -134,6 +135,7 @@ async def create_ai_analysis(
             positions=request.positions or [],
             kline_limit=request.kline_limit,
             user_id=user_id,
+            selected_flow_indicators=request.selected_flow_indicators or [],
         )
 
         thread_elapsed = time.time() - thread_start
