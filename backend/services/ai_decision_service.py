@@ -1916,6 +1916,8 @@ def _parse_kline_indicator_variables(template_text: str) -> Dict[str, Dict[str, 
     # Parse K-line variables
     for match in re.finditer(kline_pattern, template_text):
         symbol = match.group(1)
+        if symbol == "SYMBOL":
+            continue  # Skip documentation placeholder
         period = match.group(2)
         count = int(match.group(3)) if match.group(3) else 500  # Default 500
 
@@ -1928,6 +1930,8 @@ def _parse_kline_indicator_variables(template_text: str) -> Dict[str, Dict[str, 
     # Parse indicator variables
     for match in re.finditer(indicator_pattern, template_text):
         symbol = match.group(1)
+        if symbol == "SYMBOL":
+            continue  # Skip documentation placeholder
         indicator = match.group(2)
         period = match.group(3)
 
@@ -1947,6 +1951,8 @@ def _parse_kline_indicator_variables(template_text: str) -> Dict[str, Dict[str, 
     # Parse market flow variables
     for match in re.finditer(flow_pattern, template_text):
         symbol = match.group(1)
+        if symbol == "SYMBOL":
+            continue  # Skip documentation placeholder
         flow_indicator = match.group(2)
         period = match.group(3)
 
@@ -1959,6 +1965,8 @@ def _parse_kline_indicator_variables(template_text: str) -> Dict[str, Dict[str, 
     # Parse market data variables
     for match in re.finditer(market_data_pattern, template_text):
         symbol = match.group(1)
+        if symbol == "SYMBOL":
+            continue  # Skip documentation placeholder
 
         key = (symbol, None)
         _ensure_key(key)
