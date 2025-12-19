@@ -301,6 +301,7 @@ def _get_taker_data(
 
     sorted_times = sorted(buckets.keys())
     ratios = []
+    volumes = []
 
     for ts in sorted_times:
         bucket = buckets[ts]
@@ -308,6 +309,7 @@ def _get_taker_data(
         sell = float(bucket["sell"])
         ratio = buy / sell if sell > 0 else 1.0
         ratios.append(ratio)
+        volumes.append(buy + sell)
 
     if not ratios:
         return None
@@ -319,12 +321,14 @@ def _get_taker_data(
     current_ratio = current_buy / current_sell if current_sell > 0 else 1.0
 
     last_5_ratios = ratios[-5:] if len(ratios) >= 5 else ratios
+    last_5_volumes = volumes[-5:] if len(volumes) >= 5 else volumes
 
     return {
         "buy": current_buy,
         "sell": current_sell,
         "ratio": current_ratio,
         "ratio_last_5": last_5_ratios,
+        "volume_last_5": last_5_volumes,
         "period": period
     }
 

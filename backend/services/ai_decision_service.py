@@ -2189,15 +2189,21 @@ def _format_flow_indicator(indicator_name: str, indicator_data: Any) -> str:
             return "\n".join(result)
 
         elif indicator_name == "TAKER":
+            import math
             buy = indicator_data.get("buy", 0)
             sell = indicator_data.get("sell", 0)
             ratio = indicator_data.get("ratio", 1.0)
             ratio_last_5 = indicator_data.get("ratio_last_5", [])
+            volume_last_5 = indicator_data.get("volume_last_5", [])
+
+            # Calculate log ratio: positive = buyers dominate, negative = sellers dominate
+            log_ratio = math.log(ratio) if ratio > 0 else 0
 
             result = [
                 f"Taker Buy: {_format_usd(buy)} | Taker Sell: {_format_usd(sell)}",
-                f"Buy/Sell Ratio: {ratio:.2f}",
-                f"Ratio last 5: {', '.join(f'{r:.2f}' for r in ratio_last_5)}"
+                f"Buy/Sell Ratio: {ratio:.2f}x (log: {log_ratio:+.2f})",
+                f"Ratio last 5: {', '.join(f'{r:.2f}x' for r in ratio_last_5)}",
+                f"Volume last 5: {', '.join(_format_usd(v) for v in volume_last_5)}"
             ]
             return "\n".join(result)
 
