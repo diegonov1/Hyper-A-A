@@ -23,6 +23,9 @@ class KlineRealtimeCollector:
         # 默认采集的交易对
         self.default_symbols = ["BTC", "ETH", "SOL", "ARB", "OP"]
 
+        # 采集的K线周期 (1m到1h)
+        self.periods = ["1m", "3m", "5m", "15m", "30m", "1h"]
+
     async def start(self):
         """启动实时采集服务"""
         if self.running:
@@ -111,7 +114,7 @@ class KlineRealtimeCollector:
         await asyncio.sleep(seconds_to_wait)
 
     async def _collect_current_minute(self):
-        """采集当前分钟的K线数据"""
+        """采集当前分钟的K线数据（所有周期）"""
         current_time = datetime.now()
         logger.info(f"Collecting K-lines at {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
 
@@ -120,14 +123,18 @@ class KlineRealtimeCollector:
         if not symbols:
             symbols = self.default_symbols
 
-        # 并发采集所有交易对
+        # 并发采集所有交易对的所有周期
         tasks = []
+        task_info = []  # 记录每个任务对应的symbol和period
+
         for symbol in symbols:
-            task = asyncio.create_task(
-                self._collect_symbol_kline(symbol),
-                name=f"collect_{symbol}"
-            )
-            tasks.append(task)
+            for period in self.periods:
+                task = asyncio.create_task(
+                    self._collect_symbol_kline(symbol, period),
+                    name=f"collect_{symbol}_{period}"
+                )
+                tasks.append(task)
+                task_info.append((symbol, period))
 
         # 等待所有采集任务完成
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -138,21 +145,22 @@ class KlineRealtimeCollector:
 
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                logger.error(f"Failed to collect {symbols[i]}: {result}")
+                symbol, period = task_info[i]
+                logger.error(f"Failed to collect {symbol}/{period}: {result}")
                 error_count += 1
             elif result:
                 success_count += 1
             else:
                 error_count += 1
 
-        logger.info(f"Collection completed: {success_count} success, {error_count} errors")
+        logger.info(f"Collection completed: {success_count} success, {error_count} errors (total: {len(tasks)} tasks)")
 
-    async def _collect_symbol_kline(self, symbol: str) -> bool:
-        """采集单个交易对的K线数据"""
+    async def _collect_symbol_kline(self, symbol: str, period: str = "1m") -> bool:
+        """采集单个交易对指定周期的K线数据"""
         try:
-            return await kline_service.collect_current_kline(symbol, "1m")
+            return await kline_service.collect_current_kline(symbol, period)
         except Exception as e:
-            logger.error(f"Failed to collect kline for {symbol}: {e}")
+            logger.error(f"Failed to collect kline for {symbol}/{period}: {e}")
             return False
 
     async def _gap_detection_loop(self):
