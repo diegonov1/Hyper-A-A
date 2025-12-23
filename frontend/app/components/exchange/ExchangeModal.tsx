@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useExchange } from '@/contexts/ExchangeContext'
 import { ExchangeId } from '@/lib/types/exchange'
 import ExchangeIcon from './ExchangeIcon'
+import { useTranslation } from 'react-i18next'
 
 interface ExchangeModalProps {
   isOpen: boolean
@@ -12,6 +13,7 @@ interface ExchangeModalProps {
 }
 
 export default function ExchangeModal({ isOpen, onClose }: ExchangeModalProps) {
+  const { t } = useTranslation()
   const { exchanges, currentExchange, selectExchange, isLoading } = useExchange()
   const [selectedExchange, setSelectedExchange] = useState<ExchangeId>(currentExchange)
   const [hasChanges, setHasChanges] = useState(false)
@@ -62,8 +64,8 @@ export default function ExchangeModal({ isOpen, onClose }: ExchangeModalProps) {
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div>
-            <h2 className="text-2xl font-bold">Choose Exchange</h2>
-            <p className="text-muted-foreground mt-1">Select an exchange to start trading</p>
+            <h2 className="text-2xl font-bold">{t('exchange.chooseExchange', 'Choose Exchange')}</h2>
+            <p className="text-muted-foreground mt-1">{t('exchange.selectToStart', 'Select an exchange to start trading')}</p>
           </div>
           <Button
             variant="ghost"
@@ -108,12 +110,12 @@ export default function ExchangeModal({ isOpen, onClose }: ExchangeModalProps) {
                 {/* Status Badge */}
                 {selectedExchange === exchange.id && exchange.id === currentExchange && (
                   <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                    Active
+                    {t('exchange.active', 'Active')}
                   </div>
                 )}
                 {exchange.comingSoon && (
                   <div className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                    Coming Soon
+                    {t('exchange.comingSoon', 'Coming Soon')}
                   </div>
                 )}
 
@@ -162,10 +164,10 @@ export default function ExchangeModal({ isOpen, onClose }: ExchangeModalProps) {
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <p className="text-sm text-yellow-700 dark:text-yellow-300 font-medium">
-                    Exchange Selection Changed
+                    {t('exchange.selectionChanged', 'Exchange Selection Changed')}
                   </p>
                   <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-                    Data collection and trading will switch to {exchanges.find(ex => ex.id === selectedExchange)?.displayName}
+                    {t('exchange.switchTo', 'Data collection and trading will switch to')} {exchanges.find(ex => ex.id === selectedExchange)?.displayName}
                   </p>
                 </div>
                 <div className="flex gap-3 ml-4">
@@ -174,13 +176,13 @@ export default function ExchangeModal({ isOpen, onClose }: ExchangeModalProps) {
                     onClick={handleCancel}
                     disabled={isLoading}
                   >
-                    Cancel
+                    {t('common.cancel', 'Cancel')}
                   </Button>
                   <Button
                     onClick={handleSave}
                     disabled={isLoading}
                   >
-                    {isLoading ? 'Saving...' : 'Save Changes'}
+                    {isLoading ? t('exchange.saving', 'Saving...') : t('exchange.saveChanges', 'Save Changes')}
                   </Button>
                 </div>
               </div>
@@ -190,7 +192,7 @@ export default function ExchangeModal({ isOpen, onClose }: ExchangeModalProps) {
           {/* Footer Note */}
           <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-sm text-blue-700 dark:text-blue-300 text-center">
-              💡 <strong>Pro Tip:</strong> Register through our referral links to enjoy fee discounts and support the platform development.
+              💡 <strong>{t('exchange.proTip', 'Pro Tip')}:</strong> {t('exchange.referralTip', 'Register through our referral links to enjoy fee discounts and support the platform development.')}
             </p>
           </div>
         </div>

@@ -11,6 +11,7 @@ import {
 } from '@/lib/api'
 import type { HyperliquidSymbolMeta } from '@/lib/api'
 import { formatDateTime } from '@/lib/dateTime'
+import { useTranslation } from 'react-i18next'
 
 interface StrategyConfig {
   price_threshold: number
@@ -57,6 +58,7 @@ export default function StrategyPanel({
   onAccountChange,
   accountsLoading = false,
 }: StrategyPanelProps) {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -304,24 +306,24 @@ export default function StrategyPanel({
   return (
     <Card className="h-full flex flex-col">
       <CardHeader>
-        <CardTitle>Strategy Configuration</CardTitle>
-        <CardDescription>Configure trigger parameters and Hyperliquid watchlist</CardDescription>
+        <CardTitle>{t('strategy.title', 'Strategy Configuration')}</CardTitle>
+        <CardDescription>{t('strategy.description', 'Configure trigger parameters and Hyperliquid watchlist')}</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 overflow-hidden">
         <Tabs defaultValue="strategy" className="flex flex-col h-full">
           <TabsList className="grid grid-cols-3 max-w-2xl mb-4">
-            <TabsTrigger value="strategy">AI Strategy</TabsTrigger>
-            <TabsTrigger value="watchlist">Symbol Watchlist</TabsTrigger>
-            <TabsTrigger value="global">Global Configuration</TabsTrigger>
+            <TabsTrigger value="strategy">{t('strategy.aiStrategy', 'AI Strategy')}</TabsTrigger>
+            <TabsTrigger value="watchlist">{t('strategy.symbolWatchlist', 'Symbol Watchlist')}</TabsTrigger>
+            <TabsTrigger value="global">{t('strategy.globalConfig', 'Global Configuration')}</TabsTrigger>
           </TabsList>
           <TabsContent value="strategy" className="flex-1 overflow-y-auto space-y-6">
             {loading ? (
-              <div className="text-sm text-muted-foreground">Loading strategy…</div>
+              <div className="text-sm text-muted-foreground">{t('strategy.loadingStrategy', 'Loading strategy…')}</div>
             ) : (
               <>
             {/* Trader Selection */}
             <section className="space-y-2">
-              <div className="text-xs text-muted-foreground uppercase tracking-wide">Select Trader</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wide">{t('strategy.selectTrader', 'Select Trader')}</div>
               {accountOptions.length > 0 ? (
                 <Select
                   value={accountId.toString()}
@@ -336,7 +338,7 @@ export default function StrategyPanel({
                   disabled={accountsLoading}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder={accountsLoading ? 'Loading traders…' : 'Select AI trader'} />
+                    <SelectValue placeholder={accountsLoading ? t('strategy.loadingTraders', 'Loading traders…') : t('strategy.selectAiTrader', 'Select AI trader')} />
                   </SelectTrigger>
                   <SelectContent>
                     {accountOptions.map((option) => (
@@ -356,8 +358,8 @@ export default function StrategyPanel({
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                   <div className="flex flex-col space-y-1.5">
-                    <CardTitle className="text-base">Trader Configuration</CardTitle>
-                    <CardDescription className="text-xs">Settings for {selectedAccountLabel}</CardDescription>
+                    <CardTitle className="text-base">{t('strategy.traderConfig', 'Trader Configuration')}</CardTitle>
+                    <CardDescription className="text-xs">{t('strategy.settingsFor', 'Settings for')} {selectedAccountLabel}</CardDescription>
                   </div>
                   <div className="flex flex-col space-y-1">
                     {error && <div className="text-sm text-destructive">{error}</div>}
@@ -367,7 +369,7 @@ export default function StrategyPanel({
               </CardHeader>
               <CardContent className="space-y-4">
                 <section className="space-y-2">
-                  <div className="text-xs text-muted-foreground uppercase tracking-wide">Signal Pool</div>
+                  <div className="text-xs text-muted-foreground uppercase tracking-wide">{t('strategy.signalPool', 'Signal Pool')}</div>
                   <Select
                     value={signalPoolId?.toString() ?? 'none'}
                     onValueChange={(value) => {
@@ -376,10 +378,10 @@ export default function StrategyPanel({
                     }}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select signal pool (optional)" />
+                      <SelectValue placeholder={t('strategy.selectSignalPool', 'Select signal pool (optional)')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">No signal pool (scheduled only)</SelectItem>
+                      <SelectItem value="none">{t('strategy.noSignalPool', 'No signal pool (scheduled only)')}</SelectItem>
                       {signalPools.map((pool) => (
                         <SelectItem key={pool.id} value={pool.id.toString()}>
                           {pool.pool_name}
@@ -389,13 +391,13 @@ export default function StrategyPanel({
                   </Select>
                   <p className="text-xs text-muted-foreground">
                     {signalPoolId
-                      ? 'Trigger when signal pool conditions are met'
-                      : 'Only use scheduled interval trigger'}
+                      ? t('strategy.triggerWhenMet', 'Trigger when signal pool conditions are met')
+                      : t('strategy.scheduledOnly', 'Only use scheduled interval trigger')}
                   </p>
                 </section>
 
                 <section className="space-y-2">
-                  <div className="text-xs text-muted-foreground uppercase tracking-wide">Trigger Interval (seconds)</div>
+                  <div className="text-xs text-muted-foreground uppercase tracking-wide">{t('strategy.triggerInterval', 'Trigger Interval (seconds)')}</div>
                   <Input
                     type="number"
                     min={30}
@@ -406,14 +408,14 @@ export default function StrategyPanel({
                       resetMessages()
                     }}
                   />
-                  <p className="text-xs text-muted-foreground">Maximum time between triggers (default: 150s)</p>
+                  <p className="text-xs text-muted-foreground">{t('strategy.triggerIntervalHint', 'Maximum time between triggers (default: 150s)')}</p>
                 </section>
 
                 <section className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-xs text-muted-foreground uppercase tracking-wide">Strategy Status</div>
-                      <p className="text-xs text-muted-foreground">{enabled ? 'Enabled: strategy reacts to signals and scheduled triggers.' : 'Disabled: strategy will not auto-trade.'}</p>
+                      <div className="text-xs text-muted-foreground uppercase tracking-wide">{t('strategy.strategyStatus', 'Strategy Status')}</div>
+                      <p className="text-xs text-muted-foreground">{enabled ? t('strategy.enabledDesc', 'Enabled: strategy reacts to signals and scheduled triggers.') : t('strategy.disabledDesc', 'Disabled: strategy will not auto-trade.')}</p>
                     </div>
                     <label className="inline-flex items-center gap-2 text-sm">
                       <input
@@ -425,18 +427,18 @@ export default function StrategyPanel({
                         }}
                         className="h-4 w-4"
                       />
-                      {enabled ? 'Enabled' : 'Disabled'}
+                      {enabled ? t('common.enabled', 'Enabled') : t('common.disabled', 'Disabled')}
                     </label>
                   </div>
                 </section>
 
                 <section className="space-y-1 text-sm">
-                  <div className="text-xs text-muted-foreground uppercase tracking-wide">Last Trigger</div>
+                  <div className="text-xs text-muted-foreground uppercase tracking-wide">{t('strategy.lastTrigger', 'Last Trigger')}</div>
                   <div className="text-xs">{formatTimestamp(lastTriggerAt)}</div>
                 </section>
 
                 <Button onClick={handleSaveTrader} disabled={saving} className="w-full">
-                  {saving ? 'Saving…' : 'Save Trader Config'}
+                  {saving ? t('strategy.saving', 'Saving…') : t('strategy.saveTraderConfig', 'Save Trader Config')}
                 </Button>
               </CardContent>
             </Card>
@@ -446,11 +448,11 @@ export default function StrategyPanel({
           </TabsContent>
           <TabsContent value="watchlist" className="flex-1 overflow-y-auto space-y-4">
             {watchlistLoading ? (
-              <div className="text-sm text-muted-foreground">Loading watchlist…</div>
+              <div className="text-sm text-muted-foreground">{t('strategy.loadingWatchlist', 'Loading watchlist…')}</div>
             ) : (
               <div className="flex flex-col gap-4">
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground uppercase tracking-wide">
-                  <span>Configure Hyperliquid symbols to monitor</span>
+                  <span>{t('strategy.configureSymbols', 'Configure Hyperliquid symbols to monitor')}</span>
                   <span className="text-foreground font-semibold">
                     {watchlistCount} / {maxWatchlistSymbols}
                   </span>
@@ -458,7 +460,7 @@ export default function StrategyPanel({
                 {watchlistError && <div className="text-sm text-destructive">{watchlistError}</div>}
                 {watchlistSuccess && <div className="text-sm text-emerald-600">{watchlistSuccess}</div>}
                 {availableWatchlistSymbols.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">No tradable symbols available.</div>
+                  <div className="text-sm text-muted-foreground">{t('strategy.noSymbols', 'No tradable symbols available.')}</div>
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {availableWatchlistSymbols.map((symbol) => {
@@ -474,7 +476,7 @@ export default function StrategyPanel({
                         >
                           <div className="text-base font-semibold">{symbol.symbol}</div>
                           <div className="text-[11px] text-muted-foreground">
-                            {symbol.name || 'Untitled'}
+                            {symbol.name || t('strategy.untitled', 'Untitled')}
                           </div>
                           {symbol.type && (
                             <div className="text-[10px] uppercase tracking-wide text-muted-foreground mt-1">{symbol.type}</div>
@@ -489,23 +491,23 @@ export default function StrategyPanel({
                   disabled={watchlistSaving || watchlistLoading}
                   className="self-start"
                 >
-                  {watchlistSaving ? 'Saving…' : 'Save Watchlist'}
+                  {watchlistSaving ? t('strategy.saving', 'Saving…') : t('strategy.saveWatchlist', 'Save Watchlist')}
                 </Button>
               </div>
             )}
           </TabsContent>
           <TabsContent value="global" className="flex-1 overflow-y-auto space-y-4">
             {loading ? (
-              <div className="text-sm text-muted-foreground">Loading configuration…</div>
+              <div className="text-sm text-muted-foreground">{t('strategy.loadingConfig', 'Loading configuration…')}</div>
             ) : (
               <Card className="border-muted">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Global Configuration</CardTitle>
-                  <CardDescription className="text-xs">Settings that affect all traders</CardDescription>
+                  <CardTitle className="text-base">{t('strategy.globalConfig', 'Global Configuration')}</CardTitle>
+                  <CardDescription className="text-xs">{t('strategy.globalDesc', 'Settings that affect all traders')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <section className="space-y-2">
-                    <div className="text-xs text-muted-foreground uppercase tracking-wide">Sampling Interval (seconds)</div>
+                    <div className="text-xs text-muted-foreground uppercase tracking-wide">{t('strategy.samplingInterval', 'Sampling Interval (seconds)')}</div>
                     <Input
                       type="number"
                       min={5}
@@ -517,14 +519,14 @@ export default function StrategyPanel({
                         resetMessages()
                       }}
                     />
-                    <p className="text-xs text-muted-foreground">How often to collect price samples (default: 18s)</p>
+                    <p className="text-xs text-muted-foreground">{t('strategy.samplingHint', 'How often to collect price samples (default: 18s)')}</p>
                   </section>
 
                   {error && <div className="text-sm text-destructive">{error}</div>}
                   {success && <div className="text-sm text-green-500">{success}</div>}
 
                   <Button onClick={handleSaveGlobal} disabled={saving} className="w-full">
-                    {saving ? 'Saving…' : 'Save Global Settings'}
+                    {saving ? t('strategy.saving', 'Saving…') : t('strategy.saveGlobalSettings', 'Save Global Settings')}
                   </Button>
                 </CardContent>
               </Card>

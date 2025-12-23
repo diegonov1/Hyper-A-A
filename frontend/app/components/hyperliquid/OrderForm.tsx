@@ -20,6 +20,7 @@ import {
   getHyperliquidPositions,
 } from '@/lib/hyperliquidApi';
 import type { ManualOrderRequest, HyperliquidBalance, HyperliquidPosition } from '@/lib/types/hyperliquid';
+import { useTranslation } from 'react-i18next';
 
 interface OrderFormProps {
   accountId: number;
@@ -41,6 +42,7 @@ export default function OrderForm({
   defaultLeverage,
   onOrderPlaced,
 }: OrderFormProps) {
+  const { t } = useTranslation();
   const [symbol, setSymbol] = useState(availableSymbols[0] || 'BTC');
   const [side, setSide] = useState<OrderSide>('long');
   const [timeInForce, setTimeInForce] = useState<TimeInForce>('Ioc');
@@ -274,16 +276,16 @@ export default function OrderForm({
     <Card className="p-6">
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-2">
-          <h2 className="text-xl font-bold">Place Hyperliquid Order (Manual)</h2>
+          <h2 className="text-xl font-bold">{t('order.title', 'Place Hyperliquid Order (Manual)')}</h2>
           <p className="text-sm text-gray-500">
-            Manual order placement for perpetual contracts
+            {t('order.description', 'Manual order placement for perpetual contracts')}
           </p>
         </div>
 
         {/* Symbol Selector */}
         <div className="space-y-2">
           <label htmlFor="symbol" className="block text-sm font-medium">
-            Symbol
+            {t('order.symbol', 'Symbol')}
           </label>
           <Select value={symbol} onValueChange={setSymbol}>
             <SelectTrigger>
@@ -301,7 +303,7 @@ export default function OrderForm({
 
         {/* Side Selector */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium">Side</label>
+          <label className="block text-sm font-medium">{t('order.side', 'Side')}</label>
           <div className="grid grid-cols-3 gap-2">
             <Button
               type="button"
@@ -310,7 +312,7 @@ export default function OrderForm({
               className={side === 'long' ? 'bg-green-600 hover:bg-green-700' : ''}
             >
               <TrendingUp className="w-4 h-4 mr-1" />
-              Long
+              {t('order.long', 'Long')}
             </Button>
             <Button
               type="button"
@@ -319,7 +321,7 @@ export default function OrderForm({
               className={side === 'short' ? 'bg-red-600 hover:bg-red-700' : ''}
             >
               <TrendingDown className="w-4 h-4 mr-1" />
-              Short
+              {t('order.short', 'Short')}
             </Button>
             {/* Removed: Close Position button - use PositionsTable for closing positions */}
             {/* <Button
@@ -335,7 +337,7 @@ export default function OrderForm({
         {/* Time In Force */}
         <div className="space-y-2">
           <label htmlFor="timeInForce" className="block text-sm font-medium">
-            Time In Force
+            {t('order.timeInForce', 'Time In Force')}
           </label>
           <Select value={timeInForce} onValueChange={(value: TimeInForce) => setTimeInForce(value)}>
             <SelectTrigger id="timeInForce">
@@ -344,20 +346,20 @@ export default function OrderForm({
             <SelectContent>
               <SelectItem value="Ioc">
                 <div className="flex flex-col items-start">
-                  <span className="font-medium">Ioc (Recommended)</span>
-                  <span className="text-xs text-gray-500">Immediate or Cancel - executes like market order</span>
+                  <span className="font-medium">{t('order.iocRecommended', 'Ioc (Recommended)')}</span>
+                  <span className="text-xs text-gray-500">{t('order.iocDesc', 'Immediate or Cancel - executes like market order')}</span>
                 </div>
               </SelectItem>
               <SelectItem value="Gtc">
                 <div className="flex flex-col items-start">
                   <span className="font-medium">Gtc</span>
-                  <span className="text-xs text-gray-500">Good Till Canceled - limit order stays on book</span>
+                  <span className="text-xs text-gray-500">{t('order.gtcDesc', 'Good Till Canceled - limit order stays on book')}</span>
                 </div>
               </SelectItem>
               <SelectItem value="Alo">
                 <div className="flex flex-col items-start">
-                  <span className="font-medium">Alo (Advanced)</span>
-                  <span className="text-xs text-gray-500">Add Liquidity Only - maker-only orders</span>
+                  <span className="font-medium">{t('order.aloAdvanced', 'Alo (Advanced)')}</span>
+                  <span className="text-xs text-gray-500">{t('order.aloDesc', 'Add Liquidity Only - maker-only orders')}</span>
                 </div>
               </SelectItem>
             </SelectContent>
@@ -368,7 +370,7 @@ export default function OrderForm({
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <label htmlFor="size" className="block text-sm font-medium">
-              Size
+              {t('order.size', 'Size')}
             </label>
             {side !== 'close' && (
               <Button
@@ -378,7 +380,7 @@ export default function OrderForm({
                 onClick={handleMaxSize}
                 disabled={!balance || balance.availableBalance <= 0 || !currentPrice}
               >
-                Max
+                {t('order.max', 'Max')}
               </Button>
             )}
             {side === 'close' && getCurrentPosition() && (
@@ -388,7 +390,7 @@ export default function OrderForm({
                 size="sm"
                 onClick={handleClosePosition}
               >
-                Full Position
+                {t('order.fullPosition', 'Full Position')}
               </Button>
             )}
           </div>
@@ -408,12 +410,12 @@ export default function OrderForm({
           </div>
           {side !== 'close' && !canAfford && size && parseFloat(size) > 0 && (
             <p className="text-sm text-red-600">
-              Insufficient funds, max available: {calculateMaxSize().toFixed(4)} {symbol}
+              {t('order.insufficientFunds', 'Insufficient funds, max available:')} {calculateMaxSize().toFixed(4)} {symbol}
             </p>
           )}
           {side === 'close' && !getCurrentPosition() && (
             <p className="text-sm text-yellow-600">
-              No {symbol} position found
+              {t('order.noPositionFound', 'No {{symbol}} position found', { symbol })}
             </p>
           )}
         </div>
@@ -423,7 +425,7 @@ export default function OrderForm({
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <label htmlFor="leverage" className="text-sm font-medium">
-                Leverage
+                {t('order.leverage', 'Leverage')}
               </label>
               <span className="text-sm font-bold">{leverage}x</span>
             </div>
@@ -439,7 +441,7 @@ export default function OrderForm({
             {showLeverageWarning && (
               <div className="flex items-center space-x-2 text-yellow-600 text-sm">
                 <AlertTriangle className="w-4 h-4" />
-                <span>High leverage increases liquidation risk</span>
+                <span>{t('order.highLeverageWarning', 'High leverage increases liquidation risk')}</span>
               </div>
             )}
           </div>
@@ -449,11 +451,11 @@ export default function OrderForm({
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <label htmlFor="price" className="block text-sm font-medium">
-              Limit Price
+              {t('order.limitPrice', 'Limit Price')}
             </label>
             {currentPrice > 0 && (
               <span className="text-sm text-gray-500">
-                Market: ${currentPrice.toFixed(2)}
+                {t('order.market', 'Market')}: ${currentPrice.toFixed(2)}
               </span>
             )}
           </div>
@@ -473,9 +475,9 @@ export default function OrderForm({
           </div>
           {price && currentPrice > 0 && (
             <p className="text-sm text-gray-600">
-              {side === 'long' ? 'Buy' : 'Sell'} price is{' '}
+              {side === 'long' ? t('order.buy', 'Buy') : t('order.sell', 'Sell')} {t('order.priceIs', 'price is')}{' '}
               {((parseFloat(price) - currentPrice) / currentPrice * 100).toFixed(2)}%{' '}
-              {parseFloat(price) > currentPrice ? 'above' : 'below'} market
+              {parseFloat(price) > currentPrice ? t('order.aboveMarket', 'above') : t('order.belowMarket', 'below')} {t('order.market', 'market')}
             </p>
           )}
         </div>
@@ -487,7 +489,7 @@ export default function OrderForm({
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <label htmlFor="takeProfit" className="block text-sm font-medium">
-                  Take Profit Price (Optional)
+                  {t('order.takeProfitOptional', 'Take Profit Price (Optional)')}
                 </label>
                 <Button
                   type="button"
@@ -496,7 +498,7 @@ export default function OrderForm({
                   onClick={handleAutoFillTakeProfit}
                   disabled={!price && !currentPrice}
                 >
-                  Auto Fill
+                  {t('order.autoFill', 'Auto Fill')}
                 </Button>
               </div>
               <div className="relative">
@@ -514,7 +516,7 @@ export default function OrderForm({
                 </span>
               </div>
               <p className="text-xs text-gray-500">
-                Auto-fill sets +10% profit target from entry price
+                {t('order.takeProfitHint', 'Auto-fill sets +10% profit target from entry price')}
               </p>
             </div>
 
@@ -522,7 +524,7 @@ export default function OrderForm({
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <label htmlFor="stopLoss" className="block text-sm font-medium">
-                  Stop Loss Price (Optional)
+                  {t('order.stopLossOptional', 'Stop Loss Price (Optional)')}
                 </label>
                 <Button
                   type="button"
@@ -531,7 +533,7 @@ export default function OrderForm({
                   onClick={handleAutoFillStopLoss}
                   disabled={!price && !currentPrice}
                 >
-                  Auto Fill
+                  {t('order.autoFill', 'Auto Fill')}
                 </Button>
               </div>
               <div className="relative">
@@ -549,7 +551,7 @@ export default function OrderForm({
                 </span>
               </div>
               <p className="text-xs text-gray-500">
-                Auto-fill sets -5% stop loss from entry price
+                {t('order.stopLossHint', 'Auto-fill sets -5% stop loss from entry price')}
               </p>
             </div>
           </div>
@@ -562,14 +564,14 @@ export default function OrderForm({
               <div className="flex items-center justify-between text-sm">
                 <span className="flex items-center text-gray-700">
                   <AlertTriangle className="w-4 h-4 mr-1 text-yellow-600" />
-                  Estimated Liquidation
+                  {t('order.estimatedLiquidation', 'Estimated Liquidation')}
                 </span>
                 <span className="font-medium">${estimatedLiqPrice.toFixed(2)}</span>
               </div>
             )}
 
             <div className="flex justify-between text-sm">
-              <span className="text-gray-700">Required Margin</span>
+              <span className="text-gray-700">{t('order.requiredMargin', 'Required Margin')}</span>
               <span className={`font-medium ${canAfford ? 'text-green-600' : 'text-red-600'}`}>
                 ${requiredMargin.toFixed(2)}
               </span>
@@ -577,7 +579,7 @@ export default function OrderForm({
 
             {balance && (
               <div className="flex justify-between text-sm">
-                <span className="text-gray-700">Available Balance</span>
+                <span className="text-gray-700">{t('order.availableBalance', 'Available Balance')}</span>
                 <span className="font-medium">${balance.availableBalance.toFixed(2)}</span>
               </div>
             )}
@@ -585,7 +587,7 @@ export default function OrderForm({
             {!canAfford && (
               <div className="flex items-center space-x-2 text-red-600 text-sm pt-2">
                 <AlertTriangle className="w-4 h-4" />
-                <span>Insufficient balance for this order</span>
+                <span>{t('order.insufficientBalance', 'Insufficient balance for this order')}</span>
               </div>
             )}
           </div>
@@ -597,18 +599,18 @@ export default function OrderForm({
             {getCurrentPosition() ? (
               <>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-700">Current Position</span>
+                  <span className="text-gray-700">{t('order.currentPosition', 'Current Position')}</span>
                   <span className="font-medium">
                     {Math.abs(getCurrentPosition()!.szi)} {symbol}
                     ({getCurrentPosition()!.szi > 0 ? 'LONG' : 'SHORT'})
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-700">Entry Price</span>
+                  <span className="text-gray-700">{t('order.entryPrice', 'Entry Price')}</span>
                   <span className="font-medium">${getCurrentPosition()!.entryPx.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-700">Unrealized PnL</span>
+                  <span className="text-gray-700">{t('order.unrealizedPnl', 'Unrealized PnL')}</span>
                   <span className={`font-medium ${getCurrentPosition()!.unrealizedPnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     ${getCurrentPosition()!.unrealizedPnl.toFixed(2)}
                   </span>
@@ -617,7 +619,7 @@ export default function OrderForm({
             ) : (
               <div className="flex items-center space-x-2 text-yellow-600 text-sm">
                 <AlertTriangle className="w-4 h-4" />
-                <span>No position found for {symbol}</span>
+                <span>{t('order.noPositionFound', 'No {{symbol}} position found', { symbol })}</span>
               </div>
             )}
           </div>
@@ -638,7 +640,7 @@ export default function OrderForm({
               setTimeInForce('Ioc');
             }}
           >
-            Cancel
+            {t('common.cancel', 'Cancel')}
           </Button>
           <Button
             type="submit"
@@ -648,10 +650,10 @@ export default function OrderForm({
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Placing...
+                {t('order.placing', 'Placing...')}
               </>
             ) : (
-              'Place Order'
+              t('order.placeOrder', 'Place Order')
             )}
           </Button>
         </div>

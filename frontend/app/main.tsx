@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import './index.css'
+import './i18n' // Initialize i18n
 import { Toaster, toast } from 'react-hot-toast'
 
 // Global error handler for debugging

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'react-hot-toast'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -278,6 +279,7 @@ const TIME_WINDOWS = [
 // Symbols are now loaded dynamically from Hyperliquid watchlist (see watchlistSymbols state)
 
 export default function SignalManager() {
+  const { t } = useTranslation()
   const [signals, setSignals] = useState<SignalDefinition[]>([])
   const [pools, setPools] = useState<SignalPool[]>([])
   const [logs, setLogs] = useState<SignalTriggerLog[]>([])
@@ -955,7 +957,7 @@ export default function SignalManager() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64">Loading...</div>
+    return <div className="flex items-center justify-center h-64">{t('signals.loading', 'Loading...')}</div>
   }
 
   return (
@@ -963,28 +965,28 @@ export default function SignalManager() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="flex items-center justify-between gap-4 mb-4">
           <TabsList className="justify-start">
-            <TabsTrigger value="signals" className="min-w-[100px]">Signals</TabsTrigger>
-            <TabsTrigger value="pools" className="min-w-[120px]">Signal Pools</TabsTrigger>
-            <TabsTrigger value="logs" className="min-w-[120px]">Trigger Logs</TabsTrigger>
-            <TabsTrigger value="regime" className="min-w-[130px]">Market Regime</TabsTrigger>
+            <TabsTrigger value="signals" className="min-w-[100px]">{t('signals.tabs.signals', 'Signals')}</TabsTrigger>
+            <TabsTrigger value="pools" className="min-w-[120px]">{t('signals.tabs.pools', 'Signal Pools')}</TabsTrigger>
+            <TabsTrigger value="logs" className="min-w-[120px]">{t('signals.tabs.logs', 'Trigger Logs')}</TabsTrigger>
+            <TabsTrigger value="regime" className="min-w-[130px]">{t('signals.tabs.regime', 'Market Regime')}</TabsTrigger>
           </TabsList>
           <p className="text-xs text-amber-600 font-medium flex items-center gap-1">
             <span>⚠️</span>
-            <span>Signal system analyzes Mainnet data only (testnet data unreliable)</span>
+            <span>{t('signals.mainnetWarning', 'Signal system analyzes Mainnet data only (testnet data unreliable)')}</span>
           </p>
           <div className="flex gap-2">
             <Button onClick={() => openSignalDialog()} size="sm">
-              <Plus className="w-4 h-4 mr-2" />New Signal
+              <Plus className="w-4 h-4 mr-2" />{t('signals.newSignal', 'New Signal')}
             </Button>
             <Button onClick={() => openPoolDialog()} size="sm">
-              <Plus className="w-4 h-4 mr-2" />New Pool
+              <Plus className="w-4 h-4 mr-2" />{t('signals.newPool', 'New Pool')}
             </Button>
             <Button
               onClick={() => setAiChatOpen(true)}
               size="sm"
               className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 shadow-lg hover:shadow-xl transition-all"
             >
-              <Sparkles className="w-4 h-4 mr-2" />AI Set Signal
+              <Sparkles className="w-4 h-4 mr-2" />{t('signals.aiSetSignal', 'AI Set Signal')}
             </Button>
           </div>
         </div>
@@ -1014,10 +1016,10 @@ export default function SignalManager() {
                   <div className="flex items-center justify-between mt-2">
                     <div className="flex items-center gap-2">
                       <span className={`w-2 h-2 rounded-full ${signal.enabled ? 'bg-green-500' : 'bg-gray-400'}`} />
-                      <span className="text-xs">{signal.enabled ? 'Enabled' : 'Disabled'}</span>
+                      <span className="text-xs">{signal.enabled ? t('signals.enabled', 'Enabled') : t('signals.disabled', 'Disabled')}</span>
                     </div>
                     <Button variant="outline" size="sm" onClick={() => openPreviewDialog(signal)}>
-                      <Eye className="w-4 h-4 mr-1" />Preview
+                      <Eye className="w-4 h-4 mr-1" />{t('signals.backtest', 'Backtest')}
                     </Button>
                   </div>
                 </CardContent>
@@ -1046,28 +1048,28 @@ export default function SignalManager() {
                 <CardContent>
                   <div className="space-y-2">
                     <div>
-                      <span className="text-sm font-medium">Symbols: </span>
+                      <span className="text-sm font-medium">{t('signals.symbols', 'Symbols')}: </span>
                       <span className="text-sm">{pool.symbols.join(', ') || 'None'}</span>
                     </div>
                     <div>
-                      <span className="text-sm font-medium">Signals: </span>
+                      <span className="text-sm font-medium">{t('signals.tabs.signals', 'Signals')}: </span>
                       <span className="text-sm">
                         {pool.signal_ids.map(id => signals.find(s => s.id === id)?.signal_name).filter(Boolean).join(', ') || 'None'}
                       </span>
                     </div>
                     <div>
-                      <span className="text-sm font-medium">Logic: </span>
+                      <span className="text-sm font-medium">{t('signals.logic', 'Logic')}: </span>
                       <span className={`text-sm px-2 py-0.5 rounded ${pool.logic === 'AND' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'}`}>
                         {pool.logic || 'OR'}
                       </span>
                       <span className="text-xs text-muted-foreground ml-2">
-                        {pool.logic === 'AND' ? '(All signals must trigger)' : '(Any signal triggers)'}
+                        {pool.logic === 'AND' ? `(${t('signals.allSignalsTrigger', 'All signals must trigger')})` : `(${t('signals.anySignalTriggers', 'Any signal triggers')})`}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className={`w-2 h-2 rounded-full ${pool.enabled ? 'bg-green-500' : 'bg-gray-400'}`} />
-                        <span className="text-xs">{pool.enabled ? 'Enabled' : 'Disabled'}</span>
+                        <span className="text-xs">{pool.enabled ? t('signals.enabled', 'Enabled') : t('signals.disabled', 'Disabled')}</span>
                       </div>
                       <Button
                         variant="outline"
@@ -1075,7 +1077,7 @@ export default function SignalManager() {
                         onClick={() => openPoolPreviewDialog(pool, watchlistSymbols[0] || 'BTC')}
                         disabled={pool.signal_ids.length === 0}
                       >
-                        <Eye className="w-4 h-4 mr-1" />Preview
+                        <Eye className="w-4 h-4 mr-1" />{t('signals.backtest', 'Backtest')}
                       </Button>
                     </div>
                   </div>
@@ -1089,12 +1091,12 @@ export default function SignalManager() {
           <Card className="h-full flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5" />Trigger History
+                <Activity className="w-5 h-5" />{t('signals.triggerHistory', 'Trigger History')}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-hidden">
               {logs.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No triggers recorded yet</p>
+                <p className="text-muted-foreground text-center py-8">{t('signals.noTriggers', 'No triggers recorded yet')}</p>
               ) : (
                 <ScrollArea className="h-[calc(100vh-280px)]">
                   <div className="space-y-2">
@@ -1214,28 +1216,28 @@ export default function SignalManager() {
       <Dialog open={signalDialogOpen} onOpenChange={setSignalDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingSignal ? 'Edit Signal' : 'New Signal'}</DialogTitle>
-            <DialogDescription>Configure when this signal should trigger</DialogDescription>
+            <DialogTitle>{editingSignal ? t('signals.dialog.editSignal', 'Edit Signal') : t('signals.dialog.newSignal', 'New Signal')}</DialogTitle>
+            <DialogDescription>{t('signals.dialog.configureSignal', 'Configure when this signal should trigger')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Signal Name</Label>
+              <Label>{t('signals.dialog.signalNameLabel', 'Signal Name')}</Label>
               <Input
                 value={signalForm.signal_name}
                 onChange={e => setSignalForm(prev => ({ ...prev, signal_name: e.target.value }))}
-                placeholder="e.g., OI Surge Signal"
+                placeholder={t('signals.dialog.signalNamePlaceholder', 'e.g., OI Surge Signal')}
               />
             </div>
             <div>
-              <Label>Description</Label>
+              <Label>{t('signals.dialog.descriptionLabel', 'Description')}</Label>
               <Input
                 value={signalForm.description}
                 onChange={e => setSignalForm(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="What market condition does this signal detect?"
+                placeholder={t('signals.dialog.descriptionPlaceholder', 'What market condition does this signal detect?')}
               />
             </div>
             <div>
-              <Label>Metric</Label>
+              <Label>{t('signals.dialog.metricLabel', 'Metric')}</Label>
               <Select value={signalForm.metric} onValueChange={v => setSignalForm(prev => ({ ...prev, metric: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -1249,9 +1251,9 @@ export default function SignalManager() {
             {signalForm.metric === 'taker_volume' ? (
               /* Composite signal UI for taker_volume */
               <div className="space-y-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/30">
-                <div className="text-xs font-medium text-blue-400">Composite Signal Configuration</div>
+                <div className="text-xs font-medium text-blue-400">{t('signals.dialog.compositeConfig', 'Composite Signal Configuration')}</div>
                 <div>
-                  <Label>Direction</Label>
+                  <Label>{t('signals.dialog.directionLabel', 'Direction')}</Label>
                   <Select value={signalForm.direction} onValueChange={v => setSignalForm(prev => ({ ...prev, direction: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -1264,7 +1266,7 @@ export default function SignalManager() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label>Ratio Threshold</Label>
+                    <Label>{t('signals.dialog.ratioThreshold', 'Ratio Threshold')}</Label>
                     <Input
                       type="number"
                       step="0.1"
@@ -1272,10 +1274,10 @@ export default function SignalManager() {
                       value={signalForm.ratio_threshold}
                       onChange={e => setSignalForm(prev => ({ ...prev, ratio_threshold: parseFloat(e.target.value) || 1.5 }))}
                     />
-                    <p className="text-xs text-muted-foreground mt-1">Multiplier (e.g., 1.5 = 50% more). Symmetric for buy/sell.</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t('signals.dialog.ratioThresholdDesc', 'Multiplier (e.g., 1.5 = 50% more). Symmetric for buy/sell.')}</p>
                   </div>
                   <div>
-                    <Label>Volume Threshold</Label>
+                    <Label>{t('signals.dialog.volumeThreshold', 'Volume Threshold')}</Label>
                     <Input
                       type="number"
                       step="1000"
@@ -1283,7 +1285,7 @@ export default function SignalManager() {
                       value={signalForm.volume_threshold}
                       onChange={e => setSignalForm(prev => ({ ...prev, volume_threshold: parseFloat(e.target.value) || 0 }))}
                     />
-                    <p className="text-xs text-muted-foreground mt-1">Min volume (USD)</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t('signals.dialog.volumeThresholdDesc', 'Min volume (USD)')}</p>
                   </div>
                 </div>
               </div>
@@ -1291,7 +1293,7 @@ export default function SignalManager() {
               /* Standard signal UI */
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Operator</Label>
+                  <Label>{t('signals.dialog.operatorLabel', 'Operator')}</Label>
                   <Select value={signalForm.operator} onValueChange={v => setSignalForm(prev => ({ ...prev, operator: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -1303,19 +1305,19 @@ export default function SignalManager() {
                   </p>
                 </div>
                 <div>
-                  <Label>Threshold</Label>
+                  <Label>{t('signals.dialog.thresholdLabel', 'Threshold')}</Label>
                   <Input
                     type="number"
                     step="0.1"
                     value={signalForm.threshold}
                     onChange={e => setSignalForm(prev => ({ ...prev, threshold: parseFloat(e.target.value) || 0 }))}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">Value to compare against</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('signals.dialog.thresholdDesc', 'Value to compare against')}</p>
                 </div>
               </div>
             )}
             <div>
-              <Label>Time Window</Label>
+              <Label>{t('signals.dialog.timeWindowLabel', 'Time Window')}</Label>
               <Select value={signalForm.time_window} onValueChange={v => setSignalForm(prev => ({ ...prev, time_window: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -1330,7 +1332,7 @@ export default function SignalManager() {
             {/* Statistical Analysis Preview */}
             <div className="p-3 bg-muted/50 rounded-lg border">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm font-medium">Statistical Analysis</span>
+                <span className="text-sm font-medium">{t('signals.dialog.statisticalAnalysis', 'Statistical Analysis')}</span>
                 <Select value={analysisSymbol} onValueChange={setAnalysisSymbol}>
                   <SelectTrigger className="w-24 h-7 text-xs">
                     <SelectValue />
@@ -1344,11 +1346,11 @@ export default function SignalManager() {
                   </SelectContent>
                 </Select>
                 {watchlistSymbols.length === 0 && (
-                  <span className="text-xs text-muted-foreground">(Add symbols in AI Trader)</span>
+                  <span className="text-xs text-muted-foreground">{t('signals.dialog.addSymbolsHint', '(Add symbols in AI Trader)')}</span>
                 )}
               </div>
               {analysisLoading ? (
-                <p className="text-xs text-muted-foreground">Loading analysis...</p>
+                <p className="text-xs text-muted-foreground">{t('signals.dialog.loadingAnalysis', 'Loading analysis...')}</p>
               ) : metricAnalysis?.status === 'ok' && metricAnalysis.metric === signalForm.metric ? (
                 signalForm.metric === 'taker_volume' && (metricAnalysis as any).ratio_statistics ? (
                   /* taker_volume composite analysis */
@@ -1409,7 +1411,7 @@ export default function SignalManager() {
                         : `${metricAnalysis.statistics?.min.toFixed(4)} ~ ${metricAnalysis.statistics?.max.toFixed(4)}`
                       }
                     </div>
-                    <div className="text-xs font-medium mt-2">Suggested thresholds:</div>
+                    <div className="text-xs font-medium mt-2">{t('signals.dialog.suggestedThresholds', 'Suggested thresholds:')}</div>
                     <div className="flex flex-wrap gap-2 mt-1">
                       <button
                         type="button"
@@ -1417,7 +1419,7 @@ export default function SignalManager() {
                         className="text-xs px-2 py-1 bg-background border rounded hover:bg-accent"
                         title={metricAnalysis.suggestions.aggressive.description}
                       >
-                        Aggressive {signalForm.metric === 'funding'
+                        {t('signals.dialog.aggressive', 'Aggressive')} {signalForm.metric === 'funding'
                           ? `${(metricAnalysis.suggestions.aggressive.threshold * 100).toFixed(4)}%`
                           : metricAnalysis.suggestions.aggressive.threshold.toFixed(4)}
                         {(metricAnalysis.suggestions.aggressive as any).multiplier && ` (${(metricAnalysis.suggestions.aggressive as any).multiplier}x)`}
@@ -1428,7 +1430,7 @@ export default function SignalManager() {
                         className="text-xs px-2 py-1 bg-primary/10 border border-primary rounded hover:bg-primary/20"
                         title={metricAnalysis.suggestions.moderate.description}
                       >
-                        Moderate {signalForm.metric === 'funding'
+                        {t('signals.dialog.moderate', 'Moderate')} {signalForm.metric === 'funding'
                           ? `${(metricAnalysis.suggestions.moderate.threshold * 100).toFixed(4)}%`
                           : metricAnalysis.suggestions.moderate.threshold.toFixed(4)}
                         {(metricAnalysis.suggestions.moderate as any).multiplier && ` (${(metricAnalysis.suggestions.moderate as any).multiplier}x)`} ★
@@ -1439,7 +1441,7 @@ export default function SignalManager() {
                         className="text-xs px-2 py-1 bg-background border rounded hover:bg-accent"
                         title={metricAnalysis.suggestions.conservative.description}
                       >
-                        Conservative {signalForm.metric === 'funding'
+                        {t('signals.dialog.conservative', 'Conservative')} {signalForm.metric === 'funding'
                           ? `${(metricAnalysis.suggestions.conservative.threshold * 100).toFixed(4)}%`
                           : metricAnalysis.suggestions.conservative.threshold.toFixed(4)}
                         {(metricAnalysis.suggestions.conservative as any).multiplier && ` (${(metricAnalysis.suggestions.conservative as any).multiplier}x)`}
@@ -1448,24 +1450,24 @@ export default function SignalManager() {
                   </div>
                 ) : (
                   /* Fallback when no suggestions available */
-                  <p className="text-xs text-muted-foreground">Analysis data format mismatch. Please reselect metric.</p>
+                  <p className="text-xs text-muted-foreground">{t('signals.dialog.analysisDataMismatch', 'Analysis data format mismatch. Please reselect metric.')}</p>
                 )
               ) : metricAnalysis?.status === 'insufficient_data' ? (
                 <p className="text-xs text-yellow-600">{metricAnalysis.message}</p>
               ) : (
-                <p className="text-xs text-muted-foreground">Unable to load analysis</p>
+                <p className="text-xs text-muted-foreground">{t('signals.dialog.unableToLoadAnalysis', 'Unable to load analysis')}</p>
               )}
             </div>
 
             <div className="flex items-center gap-2">
               <Switch checked={signalForm.enabled} onCheckedChange={v => setSignalForm(prev => ({ ...prev, enabled: v }))} />
-              <Label>Enabled</Label>
+              <Label>{t('signals.dialog.enabledLabel', 'Enabled')}</Label>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSignalDialogOpen(false)} disabled={savingSignal}>Cancel</Button>
+            <Button variant="outline" onClick={() => setSignalDialogOpen(false)} disabled={savingSignal}>{t('signals.dialog.cancel', 'Cancel')}</Button>
             <Button onClick={handleSaveSignal} disabled={savingSignal}>
-              {savingSignal ? 'Saving...' : 'Save'}
+              {savingSignal ? t('signals.dialog.saving', 'Saving...') : t('signals.dialog.save', 'Save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1475,20 +1477,20 @@ export default function SignalManager() {
       <Dialog open={poolDialogOpen} onOpenChange={setPoolDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingPool ? 'Edit Pool' : 'New Pool'}</DialogTitle>
-            <DialogDescription>Configure signal pool</DialogDescription>
+            <DialogTitle>{editingPool ? t('signals.dialog.editPool', 'Edit Pool') : t('signals.dialog.newPool', 'New Pool')}</DialogTitle>
+            <DialogDescription>{t('signals.dialog.configurePool', 'Configure signal pool')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Pool Name</Label>
+              <Label>{t('signals.dialog.poolNameLabel', 'Pool Name')}</Label>
               <Input
                 value={poolForm.pool_name}
                 onChange={e => setPoolForm(prev => ({ ...prev, pool_name: e.target.value }))}
-                placeholder="e.g., BTC Momentum Pool"
+                placeholder={t('signals.dialog.poolNamePlaceholder', 'e.g., BTC Momentum Pool')}
               />
             </div>
             <div>
-              <Label>Symbols</Label>
+              <Label>{t('signals.dialog.symbolsLabel', 'Symbols')}</Label>
               <div className="flex flex-wrap gap-2 mt-2">
                 {watchlistSymbols.length > 0 ? (
                   watchlistSymbols.map(symbol => (
@@ -1502,12 +1504,12 @@ export default function SignalManager() {
                     </Button>
                   ))
                 ) : (
-                  <p className="text-sm text-muted-foreground">No symbols in watchlist. Configure watchlist first.</p>
+                  <p className="text-sm text-muted-foreground">{t('signals.dialog.noSymbolsInWatchlist', 'No symbols in watchlist. Configure watchlist first.')}</p>
                 )}
               </div>
             </div>
             <div>
-              <Label>Signals</Label>
+              <Label>{t('signals.dialog.signalsLabel', 'Signals')}</Label>
               <div className="space-y-2 mt-2 max-h-40 overflow-y-auto">
                 {signals.map(signal => (
                   <div key={signal.id} className="flex items-center gap-2">
@@ -1521,31 +1523,31 @@ export default function SignalManager() {
               </div>
             </div>
             <div>
-              <Label>Trigger Logic</Label>
+              <Label>{t('signals.dialog.triggerLogicLabel', 'Trigger Logic')}</Label>
               <Select value={poolForm.logic} onValueChange={(v: 'OR' | 'AND') => setPoolForm(prev => ({ ...prev, logic: v }))}>
                 <SelectTrigger className="mt-2">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="OR">OR - Any signal triggers pool</SelectItem>
-                  <SelectItem value="AND">AND - All signals must trigger</SelectItem>
+                  <SelectItem value="OR">{t('signals.dialog.orLogic', 'OR - Any signal triggers pool')}</SelectItem>
+                  <SelectItem value="AND">{t('signals.dialog.andLogic', 'AND - All signals must trigger')}</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
                 {poolForm.logic === 'AND'
-                  ? 'Pool triggers only when ALL selected signals meet their conditions simultaneously'
-                  : 'Pool triggers when ANY selected signal meets its condition'}
+                  ? t('signals.dialog.andLogicDesc', 'Pool triggers only when ALL selected signals meet their conditions simultaneously')
+                  : t('signals.dialog.orLogicDesc', 'Pool triggers when ANY selected signal meets its condition')}
               </p>
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={poolForm.enabled} onCheckedChange={v => setPoolForm(prev => ({ ...prev, enabled: v }))} />
-              <Label>Enabled</Label>
+              <Label>{t('signals.dialog.enabledLabel', 'Enabled')}</Label>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPoolDialogOpen(false)} disabled={savingPool}>Cancel</Button>
+            <Button variant="outline" onClick={() => setPoolDialogOpen(false)} disabled={savingPool}>{t('signals.dialog.cancel', 'Cancel')}</Button>
             <Button onClick={handleSavePool} disabled={savingPool}>
-              {savingPool ? 'Saving...' : 'Save'}
+              {savingPool ? t('signals.dialog.saving', 'Saving...') : t('signals.dialog.save', 'Save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1556,24 +1558,24 @@ export default function SignalManager() {
         <DialogContent className="w-[1200px] max-w-[95vw] h-[860px] max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {previewPool ? `Pool Preview: ${previewPool.pool_name}` : `Signal Preview: ${previewSignal?.signal_name}`}
+              {previewPool ? t('signals.preview.poolPreview', { name: previewPool.pool_name, defaultValue: `Pool Preview: ${previewPool.pool_name}` }) : t('signals.preview.signalPreview', { name: previewSignal?.signal_name, defaultValue: `Signal Preview: ${previewSignal?.signal_name}` })}
             </DialogTitle>
             <DialogDescription>
               {previewPool
-                ? `Historical backtest showing combined triggers (${previewPool.logic || 'OR'} logic)`
-                : 'Historical backtest showing where this signal would have triggered'}
+                ? t('signals.preview.poolBacktestDesc', { logic: previewPool.logic || 'OR', defaultValue: `Historical backtest showing combined triggers (${previewPool.logic || 'OR'} logic)` })
+                : t('signals.preview.signalBacktestDesc', 'Historical backtest showing where this signal would have triggered')}
             </DialogDescription>
           </DialogHeader>
 
           {previewLoading ? (
             <div className="flex items-center justify-center h-[500px] gap-3">
               <PacmanLoader className="w-16 h-8" />
-              <span className="text-muted-foreground">Loading preview data...</span>
+              <span className="text-muted-foreground">{t('signals.preview.loadingPreview', 'Loading preview data...')}</span>
             </div>
           ) : previewData?.error ? (
             <div className="flex items-center justify-center h-[500px]">
               <div className="text-center text-destructive">
-                <p className="font-medium">Preview Error</p>
+                <p className="font-medium">{t('signals.preview.previewError', 'Preview Error')}</p>
                 <p className="text-sm mt-2">{previewData.error}</p>
               </div>
             </div>
@@ -1582,19 +1584,19 @@ export default function SignalManager() {
               {/* Signal Info */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div className="bg-muted p-3 rounded">
-                  <div className="text-muted-foreground">Symbol</div>
+                  <div className="text-muted-foreground">{t('signals.preview.symbol', 'Symbol')}</div>
                   <div className="font-medium">{previewData.symbol}</div>
                 </div>
                 <div className="bg-muted p-3 rounded">
-                  <div className="text-muted-foreground">Time Window</div>
+                  <div className="text-muted-foreground">{t('signals.preview.timeWindow', 'Time Window')}</div>
                   <div className="font-medium">{previewData.time_window}</div>
                 </div>
                 <div className="bg-muted p-3 rounded">
-                  <div className="text-muted-foreground">K-lines</div>
+                  <div className="text-muted-foreground">{t('signals.preview.klines', 'K-lines')}</div>
                   <div className="font-medium">{previewData.kline_count}</div>
                 </div>
                 <div className="bg-muted p-3 rounded">
-                  <div className="text-muted-foreground">Triggers</div>
+                  <div className="text-muted-foreground">{t('signals.preview.triggers', 'Triggers')}</div>
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-yellow-500">{previewData.trigger_count}</span>
                     {previewData.trigger_count > 0 && (
@@ -1605,7 +1607,7 @@ export default function SignalManager() {
                         disabled={regimeLoading}
                         onClick={checkMarketRegime}
                       >
-                        {regimeLoading ? 'Checking...' : 'Check Regime'}
+                        {regimeLoading ? t('signals.preview.checking', 'Checking...') : t('signals.preview.checkRegime', 'Check Regime')}
                       </Button>
                     )}
                   </div>
@@ -1617,13 +1619,13 @@ export default function SignalManager() {
                 {previewData.isPoolPreview ? (
                   <div className="space-y-1">
                     <div>
-                      <span className="text-muted-foreground">Logic: </span>
+                      <span className="text-muted-foreground">{t('signals.preview.logic', 'Logic')}: </span>
                       <span className={`px-2 py-0.5 rounded ${previewData.logic === 'AND' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'}`}>
                         {previewData.logic || 'OR'}
                       </span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Signals: </span>
+                      <span className="text-muted-foreground">{t('signals.preview.signals', 'Signals')}: </span>
                       <span className="font-mono">
                         {Object.values(previewData.signal_names || {}).join(', ')}
                       </span>
@@ -1631,7 +1633,7 @@ export default function SignalManager() {
                   </div>
                 ) : (
                   <>
-                    <span className="text-muted-foreground">Condition: </span>
+                    <span className="text-muted-foreground">{t('signals.preview.condition', 'Condition')}: </span>
                     <span className="font-mono">
                       {previewData.condition?.metric} {previewData.condition?.operator} {previewData.condition?.threshold}
                     </span>
@@ -1650,7 +1652,7 @@ export default function SignalManager() {
 
               {/* Chart Timeframe Selector */}
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm text-muted-foreground">Chart timeframe:</span>
+                <span className="text-sm text-muted-foreground">{t('signals.preview.chartTimeframe', 'Chart timeframe:')}</span>
                 {['1m', '3m', '5m', '15m', '30m', '1h', '4h'].map(tf => (
                   <Button
                     key={tf}
@@ -1663,16 +1665,16 @@ export default function SignalManager() {
                   </Button>
                 ))}
                 <span className="text-xs text-muted-foreground ml-2">
-                  (Signal: {previewData.time_window || '5m'})
+                  ({t('signals.preview.signal', 'Signal')}: {previewData.time_window || '5m'})
                 </span>
                 <span className="text-xs text-yellow-500 ml-2">
-                  Note: Larger timeframes require longer calculation time
+                  {t('signals.preview.largerTimeframeNote', 'Note: Larger timeframes require longer calculation time')}
                 </span>
               </div>
 
               {/* Symbol Selector */}
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm text-muted-foreground">Change symbol:</span>
+                <span className="text-sm text-muted-foreground">{t('signals.preview.changeSymbol', 'Change symbol:')}</span>
                 {watchlistSymbols.length > 0 ? (
                   watchlistSymbols.map(sym => (
                     <Button

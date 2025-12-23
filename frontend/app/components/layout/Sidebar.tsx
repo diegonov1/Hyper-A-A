@@ -1,4 +1,5 @@
 import { BarChart3, FileText, NotebookPen, Coins } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 // AI Trader icon component (custom SVG)
 const AITraderIcon = ({ className }: { className?: string }) => (
@@ -54,6 +55,20 @@ const HowToUseIcon = ({ className }: { className?: string }) => (
   </svg>
 )
 
+// English language icon (En)
+const EnglishIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+    <path d="M579.2 478.4h-9.6l36.8 206.4c24.8-8.8 47.2-21.6 66.4-39.2-20-24.8-36.8-52-49.6-80.8l39.2-4.8c10.4 21.6 23.2 41.6 36.8 58.4 28.8-35.2 51.2-81.6 66.4-140.8l-186.4 0.8z m148 167.2c22.4 19.2 48 33.6 76 42.4l17.6 5.6-10.4 38.4-17.6-5.6c-34.4-10.4-65.6-28.8-92.8-52.8-24.8 22.4-54.4 40-86.4 50.4l24.8 139.2H490.4l-20 91.2h467.2c21.6 0 40-17.6 40-40V240c0-21.6-17.6-40-40-40H520l31.2 172.8-0.8-0.8 3.2 19.2 0.8-2.4 8.8 49.6h96v-40h74.4v40h124v40h-52c-16.8 69.6-44 125.6-78.4 167.2z m-277.6 217.6H87.2c-44 0-79.2-36-79.2-79.2V108.8c0-44 36-79.2 79.2-79.2h396.8l24.8 131.2h428c44 0 79.2 36 79.2 79.2v675.2c0 44-36 79.2-79.2 79.2H420.8l28.8-131.2zM262.4 557.6v-41.6H184v-61.6h72.8v-41.6H184V360h78.4v-41.6H137.6v238.4h124.8v0.8z m191.2 0V438.4c0-21.6-4.8-38.4-14.4-49.6-9.6-12-24.8-17.6-44-17.6-11.2 0-21.6 2.4-30.4 6.4-8.8 4.8-16 12-20 20h-2.4l-6.4-23.2h-34.4v182.4h44.8V471.2c0-21.6 3.2-36.8 8.8-46.4 5.6-8.8 14.4-13.6 27.2-13.6 8.8 0 16 3.2 20 9.6 4 6.4 6.4 16 6.4 29.6v107.2h44.8z" fill="#13227a"/>
+  </svg>
+)
+
+// Chinese language icon (中)
+const ChineseIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+    <path d="M219.4 363.4c11.8 35 31.4 65.4 58.7 92.2 23.2-25.2 40.7-56.2 52-92.2H219.4z m722.2-207.1H508.9L484.2 23.9H82.4C38.1 23.9 2 60 2 104.3v683.1c0 44.3 36.1 80.4 80.4 80.4h366.3l-29.4 132.4h522.4c44.3 0 80.4-36.1 80.4-80.4V236.7c-0.1-44.4-36.2-80.4-80.5-80.4zM396.1 562.2c-47.4-17.5-86.5-39.7-118-65.4-33 29.4-74.2 51-122.1 64.4l-16.5-27.3c46.9-12.4 86-30.9 116.9-57.2-31.9-32.5-54.1-70.1-66.5-112.8h-44.8V333H262c-7.2-13.4-16.5-26.3-27.3-38.6l30.9-11.3c10.8 13.9 20.6 30.4 29.4 49.5h111.8v30.9H362c-14.4 44.3-35 81.4-62.3 111.3 30.4 24.2 68.5 44.3 113.3 60.8l-16.9 26.6z m585.7 357c0 22.2-18 40.2-40.2 40.2H469.8l20.1-92.2h150.9l-86-479.6-0.5 2.6-3.6-19.1 1 0.5-31.4-175.2h421.9c22.2 0 40.2 18 40.2 40.2v682.6h-0.6zM655.2 540.1H766v-29.4H655.2V452h118v-29.4H620.7v211.2h157.1v-29.4H655.2v-64.3z m231.3-63.4c-9.3 0-17.5 1.5-25.2 5.7-7.2 3.6-14.4 9.3-20.1 16.5v-18h-33.5v153h33.5v-92.2c1-12.4 5.2-21.6 12.4-28.3 6.2-5.7 13.4-8.8 21.6-8.8 23.2 0 34.5 12.4 34.5 37.6v91.2h33.5V539c1-41.7-18.6-62.3-56.7-62.3z" fill="#d81e06"/>
+  </svg>
+)
+
 interface SidebarProps {
   currentPage?: string
   onPageChange?: (page: string) => void
@@ -61,17 +76,23 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ currentPage = 'comprehensive', onPageChange, onAccountUpdated }: SidebarProps) {
+  const { t, i18n } = useTranslation()
   const communityLink = 'https://t.me/+RqxjT7Gttm9hOGEx'
 
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'zh' ? 'en' : 'zh'
+    i18n.changeLanguage(newLang)
+  }
+
   const desktopNav = [
-    { label: 'Dashboard', page: 'comprehensive', icon: BarChart3 },
-    { label: 'AI Trader', page: 'trader-management', icon: AITraderIcon },
-    { label: 'Prompts', page: 'prompt-management', icon: NotebookPen },
-    { label: 'Signals', page: 'signal-management', icon: SignalIcon },
-    { label: 'Manual Trading', page: 'hyperliquid', icon: Coins },
-    { label: 'K-Lines', page: 'klines', icon: KLinesIcon },
-    { label: 'Premium', page: 'premium-features', icon: PremiumIcon },
-    { label: 'System Logs', page: 'system-logs', icon: FileText },
+    { label: t('sidebar.dashboard'), page: 'comprehensive', icon: BarChart3 },
+    { label: t('sidebar.aiTrader', 'AI Trader'), page: 'trader-management', icon: AITraderIcon },
+    { label: t('sidebar.prompts', 'Prompts'), page: 'prompt-management', icon: NotebookPen },
+    { label: t('sidebar.signals', 'Signals'), page: 'signal-management', icon: SignalIcon },
+    { label: t('sidebar.manualTrading', 'Manual Trading'), page: 'hyperliquid', icon: Coins },
+    { label: t('sidebar.klines', 'K-Lines'), page: 'klines', icon: KLinesIcon },
+    { label: t('sidebar.premium', 'Premium'), page: 'premium-features', icon: PremiumIcon },
+    { label: t('sidebar.systemLogs', 'System Logs'), page: 'system-logs', icon: FileText },
   ] as const
 
   return (
@@ -100,19 +121,33 @@ export default function Sidebar({ currentPage = 'comprehensive', onPageChange, o
           <button
             className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-muted text-muted-foreground"
             onClick={() => window.open('https://www.akooi.com/docs/guide/getting-started.html', '_blank', 'noopener,noreferrer')}
-            title="How to Use"
+            title={t('sidebar.howToUse', 'How to Use')}
           >
             <HowToUseIcon className="w-5 h-5 flex-shrink-0" />
-            <span>How to Use</span>
+            <span>{t('sidebar.howToUse', 'How to Use')}</span>
           </button>
 
           <button
             className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-muted text-muted-foreground"
             onClick={() => window.open(communityLink, '_blank', 'noopener,noreferrer')}
-            title="Telegram Community"
+            title={t('sidebar.community', 'Community')}
           >
             <CommunityIcon className="w-5 h-5 flex-shrink-0" />
-            <span>Community</span>
+            <span>{t('sidebar.community', 'Community')}</span>
+          </button>
+
+          {/* Language Switcher */}
+          <button
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-muted text-muted-foreground mt-auto"
+            onClick={toggleLanguage}
+            title={t('common.language', 'Language')}
+          >
+            {i18n.language.startsWith('zh') ? (
+              <ChineseIcon className="w-5 h-5 flex-shrink-0" />
+            ) : (
+              <EnglishIcon className="w-5 h-5 flex-shrink-0" />
+            )}
+            <span>{i18n.language.startsWith('zh') ? 'English' : '中文'}</span>
           </button>
         </nav>
 

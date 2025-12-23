@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import { toast } from 'react-hot-toast'
@@ -96,6 +97,7 @@ export default function AiSignalChatModal({
   accounts,
   accountsLoading,
 }: AiSignalChatModalProps) {
+  const { t } = useTranslation()
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loadingConversations, setLoadingConversations] = useState(false)
@@ -372,23 +374,23 @@ export default function AiSignalChatModal({
         <DialogHeader className="px-6 py-4 border-b">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <DialogTitle>AI Signal Generator</DialogTitle>
+              <DialogTitle>{t('signals.aiGenerator.title', 'AI Signal Generator')}</DialogTitle>
               <span className="text-xs text-muted-foreground">
-                (Requires Function Call support to invoke analysis tools. Reasoning models work best.)
+                {t('signals.aiGenerator.subtitle', '(Requires Function Call support to invoke analysis tools. Reasoning models work best.)')}
               </span>
             </div>
             {(loadingConversations || accountsLoading) && <PacmanLoader className="w-8 h-4" />}
           </div>
           <div className="flex items-center gap-4 mt-4">
             <div className="flex-1">
-              <label className="text-xs text-muted-foreground mb-1 block">AI Trader</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('signals.aiGenerator.aiTrader', 'AI Trader')}</label>
               <Select
                 value={selectedAccountId?.toString()}
                 onValueChange={(val) => setSelectedAccountId(parseInt(val))}
                 disabled={accountsLoading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={accountsLoading ? "Loading..." : "Select AI Trader"} />
+                  <SelectValue placeholder={accountsLoading ? t('signals.aiGenerator.loading', 'Loading...') : t('signals.aiGenerator.selectAiTrader', 'Select AI Trader')} />
                 </SelectTrigger>
                 <SelectContent>
                   {aiAccounts.map(acc => (
@@ -400,7 +402,7 @@ export default function AiSignalChatModal({
               </Select>
             </div>
             <div className="flex-1">
-              <label className="text-xs text-muted-foreground mb-1 block">Conversation</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('signals.aiGenerator.conversation', 'Conversation')}</label>
               <div className="flex gap-2">
                 <Select
                   value={currentConversationId?.toString() || 'new'}
@@ -410,10 +412,10 @@ export default function AiSignalChatModal({
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="New Conversation" />
+                    <SelectValue placeholder={t('signals.aiGenerator.newConversation', 'New Conversation')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="new">New Conversation</SelectItem>
+                    <SelectItem value="new">{t('signals.aiGenerator.newConversation', 'New Conversation')}</SelectItem>
                     {conversations.map(conv => (
                       <SelectItem key={conv.id} value={conv.id.toString()}>
                         {conv.title}
@@ -437,6 +439,7 @@ export default function AiSignalChatModal({
             sendMessage={sendMessage}
             messagesEndRef={messagesEndRef}
             hasAccount={!!selectedAccountId}
+            t={t}
           />
 
           {/* Right: Signal Cards (55%) */}
@@ -447,6 +450,7 @@ export default function AiSignalChatModal({
             onCreatePool={onCreatePool}
             getMetricLabel={getMetricLabel}
             getOperatorLabel={getOperatorLabel}
+            t={t}
           />
         </div>
       </DialogContent>
@@ -456,7 +460,7 @@ export default function AiSignalChatModal({
 
 // Chat Area Component
 function ChatArea({
-  messages, userInput, setUserInput, loading, sendMessage, messagesEndRef, hasAccount
+  messages, userInput, setUserInput, loading, sendMessage, messagesEndRef, hasAccount, t
 }: {
   messages: Message[]
   userInput: string
@@ -465,6 +469,7 @@ function ChatArea({
   sendMessage: () => void
   messagesEndRef: React.RefObject<HTMLDivElement>
   hasAccount: boolean
+  t: (key: string, fallback?: string) => string
 }) {
   return (
     <div className="w-[45%] flex flex-col border-r">
@@ -472,8 +477,8 @@ function ChatArea({
         <div className="space-y-4">
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
-              <p className="text-sm">Describe the signal you want to create</p>
-              <p className="text-xs mt-2">Example: "Create a signal for BTC when OI increases by 1%"</p>
+              <p className="text-sm">{t('signals.aiGenerator.describeSignal', 'Describe the signal you want to create')}</p>
+              <p className="text-xs mt-2">{t('signals.aiGenerator.example', 'Example: "Create a signal for BTC when OI increases by 1%"')}</p>
             </div>
           )}
           {messages.map((msg) => (
@@ -482,7 +487,7 @@ function ChatArea({
                 msg.role === 'user' ? 'bg-primary text-white' : 'bg-muted'
               }`}>
                 <div className={`text-xs font-semibold mb-1 ${msg.role === 'user' ? 'text-white/70' : 'opacity-70'}`}>
-                  {msg.role === 'user' ? 'You' : 'AI Assistant'}
+                  {msg.role === 'user' ? t('signals.aiGenerator.you', 'You') : t('signals.aiGenerator.aiAssistant', 'AI Assistant')}
                   {msg.isStreaming && msg.statusText && (
                     <span className="ml-2 text-primary animate-pulse">({msg.statusText})</span>
                   )}
@@ -511,7 +516,7 @@ function ChatArea({
                   {msg.content ? (
                     <ReactMarkdown rehypePlugins={[rehypeRaw]}>{msg.content}</ReactMarkdown>
                   ) : msg.isStreaming ? (
-                    <span className="text-muted-foreground italic">Generating...</span>
+                    <span className="text-muted-foreground italic">{t('signals.aiGenerator.generating', 'Generating...')}</span>
                   ) : null}
                 </div>
               </div>
@@ -523,7 +528,7 @@ function ChatArea({
       <div className="p-4 border-t">
         <div className="flex gap-2 items-end">
           <textarea
-            placeholder="Describe your signal..."
+            placeholder={t('signals.aiGenerator.inputPlaceholder', 'Describe your signal...')}
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
             onKeyDown={(e) => {
@@ -537,7 +542,7 @@ function ChatArea({
             rows={3}
           />
           <Button onClick={sendMessage} disabled={loading || !userInput.trim() || !hasAccount} className="h-[80px]">
-            {loading ? 'Sending...' : 'Send'}
+            {loading ? t('signals.aiGenerator.sending', 'Sending...') : t('signals.aiGenerator.send', 'Send')}
           </Button>
         </div>
       </div>
@@ -547,7 +552,7 @@ function ChatArea({
 
 // Signal Cards Panel Component
 function SignalCardsPanel({
-  configs, onPreview, onCreate, onCreatePool, getMetricLabel, getOperatorLabel
+  configs, onPreview, onCreate, onCreatePool, getMetricLabel, getOperatorLabel, t
 }: {
   configs: SignalConfig[]
   onPreview: (config: SignalConfig) => void
@@ -555,6 +560,7 @@ function SignalCardsPanel({
   onCreatePool: (config: SignalConfig) => Promise<boolean>
   getMetricLabel: (m: string) => string
   getOperatorLabel: (o: string) => string
+  t: (key: string, fallback?: string) => string
 }) {
   // Track which signals/pools are being created and which have been created
   const [creatingSignals, setCreatingSignals] = useState<Set<string>>(new Set())
@@ -580,11 +586,11 @@ function SignalCardsPanel({
   return (
     <div className="w-[55%] flex flex-col bg-muted/30">
       <div className="p-4 border-b">
-        <h3 className="text-sm font-semibold">Generated Signals</h3>
+        <h3 className="text-sm font-semibold">{t('signals.aiGenerator.generatedSignals', 'Generated Signals')}</h3>
         <p className="text-xs text-muted-foreground mt-1">
           {configs.length > 0
-            ? `${configs.length} signal${configs.length > 1 ? 's' : ''} generated`
-            : 'AI-generated signals will appear here'}
+            ? t('signals.aiGenerator.signalsCount', '{{count}} signal(s) generated').replace('{{count}}', configs.length.toString())
+            : t('signals.aiGenerator.signalsWillAppear', 'AI-generated signals will appear here')}
         </p>
       </div>
       <ScrollArea className="flex-1 p-4">
@@ -602,6 +608,7 @@ function SignalCardsPanel({
                   getOperatorLabel={getOperatorLabel}
                   isCreating={creatingSignals.has(signalKey)}
                   isCreated={createdSignals.has(signalKey)}
+                  t={t}
                 />
               ) : (
                 <SignalCard
@@ -613,6 +620,7 @@ function SignalCardsPanel({
                   getOperatorLabel={getOperatorLabel}
                   isCreating={creatingSignals.has(signalKey)}
                   isCreated={createdSignals.has(signalKey)}
+                  t={t}
                 />
               )
             })}
@@ -620,8 +628,8 @@ function SignalCardsPanel({
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground">
             <div className="text-center">
-              <p className="text-sm">No signals generated yet</p>
-              <p className="text-xs mt-2">Start a conversation to generate signals</p>
+              <p className="text-sm">{t('signals.aiGenerator.noSignalsYet', 'No signals generated yet')}</p>
+              <p className="text-xs mt-2">{t('signals.aiGenerator.startConversation', 'Start a conversation to generate signals')}</p>
             </div>
           </div>
         )}
@@ -632,7 +640,7 @@ function SignalCardsPanel({
 
 // Individual Signal Card Component
 function SignalCard({
-  config, onPreview, onCreate, getMetricLabel, getOperatorLabel, isCreating, isCreated
+  config, onPreview, onCreate, getMetricLabel, getOperatorLabel, isCreating, isCreated, t
 }: {
   config: SignalConfig
   onPreview: () => void
@@ -641,6 +649,7 @@ function SignalCard({
   getOperatorLabel: (o: string) => string
   isCreating?: boolean
   isCreated?: boolean
+  t: (key: string, fallback?: string) => string
 }) {
   const cond = config.trigger_condition || {}
   const isTakerVolume = cond.metric === 'taker_volume'
@@ -655,8 +664,8 @@ function SignalCard({
     <div className={`rounded-lg border bg-card p-4 ${!isValid ? 'border-destructive/50' : ''}`}>
       <div className="flex items-start justify-between mb-3">
         <div>
-          <h4 className="font-semibold text-sm">{config.name || 'Unnamed Signal'}</h4>
-          <p className="text-xs text-muted-foreground">{config.symbol || 'No symbol'}</p>
+          <h4 className="font-semibold text-sm">{config.name || t('signals.aiGenerator.unnamedSignal', 'Unnamed Signal')}</h4>
+          <p className="text-xs text-muted-foreground">{config.symbol || t('signals.aiGenerator.noSymbol', 'No symbol')}</p>
         </div>
         {hasValidMetric ? (
           <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
@@ -664,7 +673,7 @@ function SignalCard({
           </span>
         ) : (
           <span className="text-xs bg-destructive/10 text-destructive px-2 py-1 rounded">
-            Invalid Config
+            {t('signals.aiGenerator.invalidConfig', 'Invalid Config')}
           </span>
         )}
       </div>
@@ -674,51 +683,51 @@ function SignalCard({
       <div className="bg-muted/50 rounded p-2 mb-3">
         <div className="text-xs space-y-1">
           {!hasValidMetric ? (
-            <div className="text-destructive">Missing metric configuration</div>
+            <div className="text-destructive">{t('signals.aiGenerator.missingMetric', 'Missing metric configuration')}</div>
           ) : isTakerVolume ? (
             <>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Direction:</span>
+                <span className="text-muted-foreground">{t('signals.aiGenerator.direction', 'Direction')}:</span>
                 <span>{cond.direction || 'any'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Ratio Threshold:</span>
+                <span className="text-muted-foreground">{t('signals.aiGenerator.ratioThreshold', 'Ratio Threshold')}:</span>
                 <span>{cond.ratio_threshold || 1.5}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Volume Threshold:</span>
+                <span className="text-muted-foreground">{t('signals.aiGenerator.volumeThreshold', 'Volume Threshold')}:</span>
                 <span>{cond.volume_threshold || 0}</span>
               </div>
             </>
           ) : (
             <>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Metric:</span>
+                <span className="text-muted-foreground">{t('signals.aiGenerator.metric', 'Metric')}:</span>
                 <span>{getMetricLabel(cond.metric)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Condition:</span>
+                <span className="text-muted-foreground">{t('signals.aiGenerator.condition', 'Condition')}:</span>
                 <span>{getOperatorLabel(cond.operator || '')} {cond.threshold}</span>
               </div>
             </>
           )}
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Time Window:</span>
+            <span className="text-muted-foreground">{t('signals.aiGenerator.timeWindow', 'Time Window')}:</span>
             <span>{cond.time_window || '5m'}</span>
           </div>
         </div>
       </div>
       <div className="flex gap-2">
         <Button variant="outline" size="sm" className="flex-1" onClick={onPreview} disabled={!isValid}>
-          Preview
+          {t('signals.aiGenerator.preview', 'Preview')}
         </Button>
         {isCreated ? (
           <Button size="sm" className="flex-1" variant="secondary" disabled>
-            <span className="text-green-600">✓ Created</span>
+            <span className="text-green-600">✓ {t('signals.aiGenerator.created', 'Created')}</span>
           </Button>
         ) : (
           <Button size="sm" className="flex-1" onClick={onCreate} disabled={!isValid || isCreating}>
-            {isCreating ? 'Creating...' : 'Create Signal'}
+            {isCreating ? t('signals.aiGenerator.creating', 'Creating...') : t('signals.aiGenerator.createSignal', 'Create Signal')}
           </Button>
         )}
       </div>
@@ -728,7 +737,7 @@ function SignalCard({
 
 // Signal Pool Card Component
 function SignalPoolCard({
-  config, onCreate, getMetricLabel, getOperatorLabel, isCreating, isCreated
+  config, onCreate, getMetricLabel, getOperatorLabel, isCreating, isCreated, t
 }: {
   config: SignalConfig
   onCreate: () => void
@@ -736,6 +745,7 @@ function SignalPoolCard({
   getOperatorLabel: (o: string) => string
   isCreating?: boolean
   isCreated?: boolean
+  t: (key: string, fallback?: string) => string
 }) {
   const signals = config.signals || []
   // Validate signals - support both 'metric' and 'indicator' field names (AI uses 'indicator')
@@ -752,11 +762,11 @@ function SignalPoolCard({
     <div className={`rounded-lg border bg-card p-4 ${!isValid ? 'border-destructive/50' : 'border-primary/50'}`}>
       <div className="flex items-start justify-between mb-3">
         <div>
-          <h4 className="font-semibold text-sm">{config.name || 'Unnamed Pool'}</h4>
-          <p className="text-xs text-muted-foreground">{config.symbol || 'No symbol'}</p>
+          <h4 className="font-semibold text-sm">{config.name || t('signals.aiGenerator.unnamedPool', 'Unnamed Pool')}</h4>
+          <p className="text-xs text-muted-foreground">{config.symbol || t('signals.aiGenerator.noSymbol', 'No symbol')}</p>
         </div>
         <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded font-medium">
-          Pool ({config.logic || 'AND'})
+          {t('signals.aiGenerator.pool', 'Pool')} ({config.logic || 'AND'})
         </span>
       </div>
       {config.description && (
@@ -764,7 +774,9 @@ function SignalPoolCard({
       )}
       <div className="bg-muted/50 rounded p-2 mb-3">
         <div className="text-xs font-medium mb-2">
-          {signals.length} Signal{signals.length > 1 ? 's' : ''} Combined with {config.logic || 'AND'}:
+          {t('signals.aiGenerator.signalsCombined', '{{count}} Signal(s) Combined with {{logic}}:')
+            .replace('{{count}}', signals.length.toString())
+            .replace('{{logic}}', config.logic || 'AND')}
         </div>
         <div className="space-y-1">
           {signals.map((sig, idx) => {
@@ -790,11 +802,11 @@ function SignalPoolCard({
       <div className="flex gap-2">
         {isCreated ? (
           <Button size="sm" className="flex-1" variant="secondary" disabled>
-            <span className="text-green-600">✓ Pool Created</span>
+            <span className="text-green-600">✓ {t('signals.aiGenerator.poolCreated', 'Pool Created')}</span>
           </Button>
         ) : (
           <Button size="sm" className="flex-1" onClick={onCreate} disabled={!isValid || isCreating}>
-            {isCreating ? 'Creating...' : 'Create Signal Pool'}
+            {isCreating ? t('signals.aiGenerator.creating', 'Creating...') : t('signals.aiGenerator.createPool', 'Create Signal Pool')}
           </Button>
         )}
       </div>

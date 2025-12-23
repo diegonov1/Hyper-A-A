@@ -15,6 +15,7 @@ import type { HyperliquidBalance } from '@/lib/types/hyperliquid'
 import type { HyperliquidEnvironment } from '@/lib/types/hyperliquid'
 import type { Position } from './HyperliquidMultiAccountSummary'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 
 interface RateLimitData {
   cumVlm: number
@@ -50,6 +51,7 @@ export default function TraderDetailModal({
   positions,
   environment,
 }: TraderDetailModalProps) {
+  const { t } = useTranslation()
   // Initialize state from props (which already contain cached data)
   const [rateLimit, setRateLimit] = useState<RateLimitData | null>(account.rateLimit)
   const [rateLimitUpdated, setRateLimitUpdated] = useState<number | null>(account.rateLimitUpdated)
@@ -125,7 +127,7 @@ export default function TraderDetailModal({
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <span>{account.accountName} - Details</span>
+            <span>{account.accountName} - {t('accountDetail.details', 'Details')}</span>
             <Badge variant={environment === 'testnet' ? 'default' : 'destructive'} className="uppercase text-xs">
               {environment}
             </Badge>
@@ -135,7 +137,7 @@ export default function TraderDetailModal({
         <div className="space-y-6">
           {/* Account Status Section */}
           {account.balance && (
-            <AccountStatusSection balance={account.balance} />
+            <AccountStatusSection balance={account.balance} t={t} />
           )}
 
           {/* API Usage Section */}
@@ -146,6 +148,7 @@ export default function TraderDetailModal({
             onRefresh={handleRefreshRateLimit}
             getUsageColor={getUsageColor}
             getUsageBarColor={getUsageBarColor}
+            t={t}
           />
 
           {/* Trading Stats Section */}
@@ -154,10 +157,11 @@ export default function TraderDetailModal({
             statsUpdated={tradingStatsUpdated}
             refreshing={refreshingStats}
             onRefresh={handleRefreshStats}
+            t={t}
           />
 
           {/* Positions Section */}
-          <PositionsSection positions={positions} />
+          <PositionsSection positions={positions} t={t} />
         </div>
       </DialogContent>
     </Dialog>
@@ -165,27 +169,27 @@ export default function TraderDetailModal({
 }
 
 // Account Status Section
-function AccountStatusSection({ balance }: { balance: HyperliquidBalance }) {
+function AccountStatusSection({ balance, t }: { balance: HyperliquidBalance; t: any }) {
   return (
     <div className="border rounded-lg p-4">
-      <h3 className="text-sm font-semibold mb-3">Account Status</h3>
+      <h3 className="text-sm font-semibold mb-3">{t('accountDetail.accountStatus', 'Account Status')}</h3>
       <div className="grid grid-cols-3 gap-4 text-sm">
         <div>
-          <div className="text-muted-foreground text-xs">Total Equity</div>
+          <div className="text-muted-foreground text-xs">{t('accountDetail.totalEquity', 'Total Equity')}</div>
           <div className="font-bold">${balance.totalEquity.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Available</div>
+          <div className="text-muted-foreground text-xs">{t('accountDetail.available', 'Available')}</div>
           <div className="font-medium text-green-600">${balance.availableBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Used Margin</div>
+          <div className="text-muted-foreground text-xs">{t('accountDetail.usedMargin', 'Used Margin')}</div>
           <div className="font-medium">${balance.usedMargin.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
         </div>
       </div>
       {balance.walletAddress && (
         <div className="mt-3 pt-3 border-t">
-          <div className="text-muted-foreground text-xs">Wallet</div>
+          <div className="text-muted-foreground text-xs">{t('accountDetail.wallet', 'Wallet')}</div>
           <div className="font-mono text-xs">{balance.walletAddress}</div>
         </div>
       )}
@@ -201,6 +205,7 @@ function ApiUsageSection({
   onRefresh,
   getUsageColor,
   getUsageBarColor,
+  t,
 }: {
   rateLimit: RateLimitData | null
   rateLimitUpdated: number | null
@@ -208,14 +213,15 @@ function ApiUsageSection({
   onRefresh: () => void
   getUsageColor: (p: number) => string
   getUsageBarColor: (p: number) => string
+  t: any
 }) {
   return (
     <div className="border rounded-lg p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold">API Usage</h3>
+        <h3 className="text-sm font-semibold">{t('accountDetail.apiUsage', 'API Usage')}</h3>
         <Button variant="outline" size="sm" onClick={onRefresh} disabled={refreshing}>
           <RefreshCw className={`w-3 h-3 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
+          {t('common.refresh', 'Refresh')}
         </Button>
       </div>
 
@@ -223,19 +229,19 @@ function ApiUsageSection({
         <div className="space-y-3">
           <div className="grid grid-cols-4 gap-3 text-sm">
             <div>
-              <div className="text-muted-foreground text-xs">Cumulative Volume</div>
+              <div className="text-muted-foreground text-xs">{t('accountDetail.cumulativeVolume', 'Cumulative Volume')}</div>
               <div className="font-bold">${rateLimit.cumVlm.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
             </div>
             <div>
-              <div className="text-muted-foreground text-xs">Requests Used</div>
+              <div className="text-muted-foreground text-xs">{t('accountDetail.requestsUsed', 'Requests Used')}</div>
               <div className="font-medium">{rateLimit.nRequestsUsed.toLocaleString()}</div>
             </div>
             <div>
-              <div className="text-muted-foreground text-xs">Requests Cap</div>
+              <div className="text-muted-foreground text-xs">{t('accountDetail.requestsCap', 'Requests Cap')}</div>
               <div className="font-medium">{rateLimit.nRequestsCap.toLocaleString()}</div>
             </div>
             <div>
-              <div className="text-muted-foreground text-xs">Remaining</div>
+              <div className="text-muted-foreground text-xs">{t('accountDetail.remaining', 'Remaining')}</div>
               <div className={`font-bold ${getUsageColor(rateLimit.usagePercent)}`}>
                 {rateLimit.remaining.toLocaleString()}
               </div>
@@ -245,7 +251,7 @@ function ApiUsageSection({
           {/* Progress bar */}
           <div>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-muted-foreground">Usage</span>
+              <span className="text-muted-foreground">{t('accountDetail.usage', 'Usage')}</span>
               <span className={getUsageColor(rateLimit.usagePercent)}>{rateLimit.usagePercent.toFixed(1)}%</span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
@@ -261,7 +267,7 @@ function ApiUsageSection({
             <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded p-3 flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
               <div className="text-xs text-red-700 dark:text-red-400">
-                <strong>API Quota Exceeded!</strong> Order placement will fail. Trade more to increase quota.
+                <strong>{t('accountDetail.quotaExceeded', 'API Quota Exceeded!')}</strong> {t('accountDetail.quotaExceededDesc', 'Order placement will fail. Trade more to increase quota.')}
               </div>
             </div>
           )}
@@ -271,19 +277,19 @@ function ApiUsageSection({
             <div className="flex items-start gap-2">
               <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
               <div className="text-xs text-blue-700 dark:text-blue-400">
-                <strong>To increase quota:</strong> Complete more trades. Every $1 USDC traded adds 1 request to your cap.
+                <strong>{t('accountDetail.increaseQuota', 'To increase quota:')}</strong> {t('accountDetail.increaseQuotaDesc', 'Complete more trades. Every $1 USDC traded adds 1 request to your cap.')}
               </div>
             </div>
           </div>
 
           {rateLimitUpdated && (
             <div className="text-xs text-muted-foreground text-right">
-              Last updated: {formatDateTime(new Date(rateLimitUpdated))}
+              {t('accountDetail.lastUpdated', 'Last updated')}: {formatDateTime(new Date(rateLimitUpdated))}
             </div>
           )}
         </div>
       ) : (
-        <div className="text-sm text-muted-foreground">Click Refresh to load API usage data</div>
+        <div className="text-sm text-muted-foreground">{t('accountDetail.clickRefreshApi', 'Click Refresh to load API usage data')}</div>
       )}
     </div>
   )
@@ -295,19 +301,21 @@ function TradingStatsSection({
   statsUpdated,
   refreshing,
   onRefresh,
+  t,
 }: {
   stats: TradingStats | null
   statsUpdated: number | null
   refreshing: boolean
   onRefresh: () => void
+  t: any
 }) {
   return (
     <div className="border rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold">Trading Statistics</h3>
+        <h3 className="text-sm font-semibold">{t('accountDetail.tradingStats', 'Trading Statistics')}</h3>
         <Button variant="outline" size="sm" onClick={onRefresh} disabled={refreshing}>
           <RefreshCw className={`w-3 h-3 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
+          {t('common.refresh', 'Refresh')}
         </Button>
       </div>
 
@@ -315,15 +323,15 @@ function TradingStatsSection({
         <div className="space-y-3">
           <div className="grid grid-cols-4 gap-3 text-sm">
             <div>
-              <div className="text-muted-foreground text-xs">Win Rate</div>
+              <div className="text-muted-foreground text-xs">{t('accountDetail.winRate', 'Win Rate')}</div>
               <div className="font-bold text-lg">{stats.win_rate.toFixed(1)}%</div>
             </div>
             <div>
-              <div className="text-muted-foreground text-xs">Total Trades</div>
+              <div className="text-muted-foreground text-xs">{t('accountDetail.totalTrades', 'Total Trades')}</div>
               <div className="font-medium">{stats.total_trades}</div>
             </div>
             <div>
-              <div className="text-muted-foreground text-xs">Wins / Losses</div>
+              <div className="text-muted-foreground text-xs">{t('accountDetail.winsLosses', 'Wins / Losses')}</div>
               <div className="font-medium">
                 <span className="text-green-600">{stats.wins}W</span>
                 {' / '}
@@ -331,7 +339,7 @@ function TradingStatsSection({
               </div>
             </div>
             <div>
-              <div className="text-muted-foreground text-xs">Profit Factor</div>
+              <div className="text-muted-foreground text-xs">{t('accountDetail.profitFactor', 'Profit Factor')}</div>
               <div className={`font-bold ${stats.profit_factor >= 1 ? 'text-green-600' : 'text-red-600'}`}>
                 {stats.profit_factor.toFixed(2)}
               </div>
@@ -340,25 +348,25 @@ function TradingStatsSection({
 
           <div className="grid grid-cols-4 gap-3 text-sm pt-2 border-t">
             <div>
-              <div className="text-muted-foreground text-xs">Total PnL</div>
+              <div className="text-muted-foreground text-xs">{t('accountDetail.totalPnl', 'Total PnL')}</div>
               <div className={`font-bold ${stats.total_pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 ${stats.total_pnl.toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </div>
             </div>
             <div>
-              <div className="text-muted-foreground text-xs">Avg Win</div>
+              <div className="text-muted-foreground text-xs">{t('accountDetail.avgWin', 'Avg Win')}</div>
               <div className="font-medium text-green-600">
                 +${stats.avg_win.toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </div>
             </div>
             <div>
-              <div className="text-muted-foreground text-xs">Avg Loss</div>
+              <div className="text-muted-foreground text-xs">{t('accountDetail.avgLoss', 'Avg Loss')}</div>
               <div className="font-medium text-red-600">
                 ${stats.avg_loss.toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </div>
             </div>
             <div>
-              <div className="text-muted-foreground text-xs">Gross Profit</div>
+              <div className="text-muted-foreground text-xs">{t('accountDetail.grossProfit', 'Gross Profit')}</div>
               <div className="font-medium text-green-600">
                 +${stats.gross_profit.toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </div>
@@ -367,13 +375,13 @@ function TradingStatsSection({
 
           {statsUpdated && (
             <div className="text-xs text-muted-foreground text-right">
-              Last updated: {formatDateTime(new Date(statsUpdated))}
+              {t('accountDetail.lastUpdated', 'Last updated')}: {formatDateTime(new Date(statsUpdated))}
             </div>
           )}
         </div>
       ) : (
         <div className="text-sm text-muted-foreground">
-          {stats ? 'No closed trades yet' : 'Click Refresh to load trading statistics'}
+          {stats ? t('accountDetail.noClosedTrades', 'No closed trades yet') : t('accountDetail.clickRefreshStats', 'Click Refresh to load trading statistics')}
         </div>
       )}
     </div>
@@ -381,30 +389,30 @@ function TradingStatsSection({
 }
 
 // Positions Section
-function PositionsSection({ positions }: { positions: Position[] }) {
+function PositionsSection({ positions, t }: { positions: Position[]; t: any }) {
   if (positions.length === 0) {
     return (
       <div className="border rounded-lg p-4">
-        <h3 className="text-sm font-semibold mb-3">Open Positions</h3>
-        <div className="text-sm text-muted-foreground">No open positions</div>
+        <h3 className="text-sm font-semibold mb-3">{t('accountDetail.openPositions', 'Open Positions')}</h3>
+        <div className="text-sm text-muted-foreground">{t('accountDetail.noOpenPositions', 'No open positions')}</div>
       </div>
     )
   }
 
   return (
     <div className="border rounded-lg p-4">
-      <h3 className="text-sm font-semibold mb-3">Open Positions ({positions.length})</h3>
+      <h3 className="text-sm font-semibold mb-3">{t('accountDetail.openPositions', 'Open Positions')} ({positions.length})</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-xs text-muted-foreground">
-              <th className="text-left py-2 pr-2">Symbol</th>
-              <th className="text-left py-2 pr-2">Side</th>
-              <th className="text-right py-2 pr-2">Size</th>
-              <th className="text-right py-2 pr-2">Entry</th>
-              <th className="text-right py-2 pr-2">Mark</th>
-              <th className="text-right py-2 pr-2">PnL</th>
-              <th className="text-right py-2">Lev</th>
+              <th className="text-left py-2 pr-2">{t('accountDetail.symbol', 'Symbol')}</th>
+              <th className="text-left py-2 pr-2">{t('accountDetail.side', 'Side')}</th>
+              <th className="text-right py-2 pr-2">{t('accountDetail.size', 'Size')}</th>
+              <th className="text-right py-2 pr-2">{t('accountDetail.entry', 'Entry')}</th>
+              <th className="text-right py-2 pr-2">{t('accountDetail.mark', 'Mark')}</th>
+              <th className="text-right py-2 pr-2">{t('accountDetail.pnl', 'PnL')}</th>
+              <th className="text-right py-2">{t('accountDetail.lev', 'Lev')}</th>
             </tr>
           </thead>
           <tbody>

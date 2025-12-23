@@ -14,6 +14,7 @@
  * CURRENT STATUS: Active production component for multi-wallet Hyperliquid architecture
  */
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useTradingMode } from '@/contexts/TradingModeContext'
 import { getArenaPositions, getArenaTrades, ArenaTrade } from '@/lib/api'
 import AlphaArenaFeed from '@/components/portfolio/AlphaArenaFeed'
@@ -26,6 +27,7 @@ interface HyperliquidViewProps {
 }
 
 export default function HyperliquidView({ wsRef, refreshKey = 0 }: HyperliquidViewProps) {
+  const { t } = useTranslation()
   const { tradingMode } = useTradingMode()
   const [loading, setLoading] = useState(true)
   const [positionsData, setPositionsData] = useState<any>(null)
@@ -90,7 +92,7 @@ export default function HyperliquidView({ wsRef, refreshKey = 0 }: HyperliquidVi
   if (loading && !positionsData) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="text-muted-foreground">Loading Hyperliquid data...</div>
+        <div className="text-muted-foreground">{t('dashboard.loadingData', 'Loading Hyperliquid data...')}</div>
       </div>
     )
   }
@@ -110,7 +112,7 @@ export default function HyperliquidView({ wsRef, refreshKey = 0 }: HyperliquidVi
             />
           ) : (
             <div className="bg-card border border-border rounded-lg h-full flex items-center justify-center">
-              <div className="text-muted-foreground">No Hyperliquid account configured</div>
+              <div className="text-muted-foreground">{t('dashboard.noAccountConfigured', 'No Hyperliquid account configured')}</div>
             </div>
           )}
         </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -26,6 +27,7 @@ interface PremiumFeaturesViewProps {
 }
 
 export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: PremiumFeaturesViewProps) {
+  const { t } = useTranslation()
   const { user, membership, membershipLoading } = useAuth()
 
   const [isLoading, setIsLoading] = useState(true)
@@ -144,7 +146,7 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
   if (isLoading || membershipLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-muted-foreground">Loading premium features...</div>
+        <div className="text-muted-foreground">{t('premium.loading', 'Loading premium features...')}</div>
       </div>
     )
   }
@@ -158,28 +160,28 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
           <div className="flex items-stretch gap-6">
             <div className="space-y-2">
               <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-bold">Premium Features</h1>
+                <h1 className="text-3xl font-bold">{t('premium.title', 'Premium Features')}</h1>
                 {isPremium && subscriptionEndDate && (
                   <Badge variant="outline" className="text-sm">
-                    Active until {new Date(subscriptionEndDate).toLocaleDateString()}
+                    {t('premium.activeUntil', 'Active until')} {new Date(subscriptionEndDate).toLocaleDateString()}
                   </Badge>
                 )}
               </div>
               <p className="text-muted-foreground">
-                Continuous development requires financial support. Subscribe to unlock:
+                {t('premium.subscriptionDesc', 'Continuous development requires financial support. Subscribe to unlock:')}
               </p>
               <div className="flex flex-wrap gap-3 text-sm">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Target className="w-4 h-4" />
-                  <span>Advanced data analysis</span>
+                  <span>{t('premium.advancedDataAnalysis', 'Advanced data analysis')}</span>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Clock className="w-4 h-4" />
-                  <span>Priority technical support</span>
+                  <span>{t('premium.prioritySupport', 'Priority technical support')}</span>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <TrendingUp className="w-4 h-4" />
-                  <span>Feature request priority</span>
+                  <span>{t('premium.featureRequestPriority', 'Feature request priority')}</span>
                 </div>
               </div>
             </div>
@@ -189,16 +191,16 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
               <Card className="border text-card-foreground shadow border-orange-500/50 bg-orange-50/5 h-[100px] flex">
                 <CardContent className="p-4 flex flex-col justify-center h-full space-y-3">
                   <div className="space-y-1">
-                    <p className="font-medium text-sm">Premium subscription required</p>
+                    <p className="font-medium text-sm">{t('premium.premiumRequired', 'Premium subscription required')}</p>
                     <p className="text-xs text-muted-foreground">
-                      Unlock all features below with a premium subscription
+                      {t('premium.unlockAllFeatures', 'Unlock all features below with a premium subscription')}
                     </p>
                   </div>
                   <Button
                     onClick={handleUpgradeClick}
                     className="gap-2 shrink-0 h-8 text-xs self-start w-full"
                   >
-                    Subscribe Now
+                    {t('premium.subscribeNow', 'Subscribe Now')}
                     <ExternalLink className="w-4 h-4" />
                   </Button>
                 </CardContent>
@@ -215,7 +217,7 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
           <section className="space-y-4">
             <div className="flex items-center gap-2">
               <Database className="w-5 h-5 text-primary" />
-              <h2 className="text-xl font-semibold">Trading Improvement</h2>
+              <h2 className="text-xl font-semibold">{t('premium.tradingImprovement', 'Trading Improvement')}</h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -225,13 +227,13 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
                   <div className="space-y-1">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <Percent className="w-5 h-5 text-blue-500" />
-                      Service Fee
+                      {t('premium.serviceFee', 'Service Fee')}
                       {isPremium && (
                         <Badge className="bg-green-500 text-white text-xs">50% Off</Badge>
                       )}
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      A small fee per trade supports long-term project development and maintenance
+                      {t('premium.serviceFeeDesc', 'A small fee per trade supports long-term project development and maintenance')}
                     </CardDescription>
                   </div>
                 </CardHeader>
@@ -239,7 +241,7 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
                   <div className="h-[200px] p-3 bg-muted/50 rounded-lg text-xs flex flex-col items-center justify-center">
                     <div className="font-medium flex items-center gap-2 mb-4">
                       <Info className="w-4 h-4" />
-                      Current Rate
+                      {t('premium.currentRate', 'Current Rate')}
                     </div>
                     <div className="text-center">
                       <div className="text-3xl font-bold text-foreground mb-2">
@@ -252,11 +254,11 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
                           '0.03%'
                         )}
                       </div>
-                      <div className="text-sm text-muted-foreground mb-2">per trade</div>
+                      <div className="text-sm text-muted-foreground mb-2">{t('premium.perTrade', 'per trade')}</div>
                       {isPremium ? (
-                        <div className="text-green-600 font-medium">Premium discount applied</div>
+                        <div className="text-green-600 font-medium">{t('premium.premiumDiscount', 'Premium discount applied')}</div>
                       ) : (
-                        <div className="text-muted-foreground">Standard rate for non-subscribers</div>
+                        <div className="text-muted-foreground">{t('premium.standardRate', 'Standard rate for non-subscribers')}</div>
                       )}
                     </div>
                   </div>
@@ -266,7 +268,7 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
                       onClick={handleUpgradeClick}
                       className="w-full h-8 text-xs"
                     >
-                      Subscribe for 50% Off
+                      {t('premium.subscribeFor50Off', 'Subscribe for 50% Off')}
                       <ExternalLink className="w-3 h-3 ml-1" />
                     </Button>
                   )}
@@ -277,17 +279,17 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
                 <CardHeader className="pb-3">
                   <div className="space-y-1">
                     <CardTitle className="flex items-center gap-2 text-lg">
-                      60+ Sampling Pool Depth
+                      {t('premium.samplingPoolDepth', '60+ Sampling Pool Depth')}
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Provide AI with deeper historical data for better trend analysis
+                      {t('premium.samplingPoolDesc', 'Provide AI with deeper historical data for better trend analysis')}
                     </CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium">Sampling Depth (points)</span>
+                      <span className="text-xs font-medium">{t('premium.samplingDepth', 'Sampling Depth (points)')}</span>
                       <span className="text-xs text-muted-foreground">{samplingDepth} points</span>
                     </div>
                     <div className="flex gap-2">
@@ -311,13 +313,13 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
                   <div className="space-y-1 p-3 bg-muted/50 rounded-lg text-xs">
                     <div className="font-medium flex items-center gap-2">
                       <Info className="w-3 h-3" />
-                      Current Configuration
+                      {t('premium.currentConfig', 'Current Configuration')}
                     </div>
                     <div className="space-y-0.5 text-muted-foreground ml-5">
-                      <div>• Sampling Interval: {samplingInterval} seconds</div>
-                      <div>• Data Coverage: {((samplingDepth * samplingInterval) / 60).toFixed(1)} minutes of price history</div>
-                      <div>• Storage: Minimal (rolling buffer)</div>
-                      <div>• Estimated Accuracy Boost: +{(() => {
+                      <div>• {t('premium.samplingInterval', 'Sampling Interval')}: {samplingInterval} seconds</div>
+                      <div>• {t('premium.dataCoverage', 'Data Coverage')}: {((samplingDepth * samplingInterval) / 60).toFixed(1)} minutes of price history</div>
+                      <div>• {t('premium.storage', 'Storage')}: {t('premium.minimalRolling', 'Minimal (rolling buffer)')}</div>
+                      <div>• {t('premium.estimatedAccuracyBoost', 'Estimated Accuracy Boost')}: +{(() => {
                         const baseDepth = 10;
                         if (samplingDepth <= baseDepth) return 0;
                         const steps = (samplingDepth - baseDepth) / 10;
@@ -331,7 +333,7 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
                     disabled={isSaving}
                     className="w-full h-8 text-xs"
                   >
-                    {isSaving ? 'Saving...' : 'Save Configuration'}
+                    {isSaving ? t('premium.saving', 'Saving...') : t('premium.saveConfig', 'Save Configuration')}
                   </Button>
                 </CardContent>
               </Card>
@@ -342,11 +344,11 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
                   <div className="space-y-1">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <Sparkles className="w-5 h-5 text-purple-500" />
-                      AI Prompt Generator
-                      <Badge className="bg-green-500 text-white text-xs">Limited Time Free</Badge>
+                      {t('premium.aiPromptGenerator', 'AI Prompt Generator')}
+                      <Badge className="bg-green-500 text-white text-xs">{t('premium.limitedTimeFree', 'Limited Time Free')}</Badge>
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Generate professional trading strategy prompts through natural language conversation with AI
+                      {t('premium.aiPromptGeneratorDesc', 'Generate professional trading strategy prompts through natural language conversation with AI')}
                     </CardDescription>
                   </div>
                 </CardHeader>
@@ -354,14 +356,14 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
                   <div className="space-y-2 p-3 bg-muted/50 rounded-lg text-xs">
                     <div className="font-medium flex items-center gap-2">
                       <Info className="w-3 h-3" />
-                      Key Features
+                      {t('premium.keyFeatures', 'Key Features')}
                     </div>
                     <div className="space-y-0.5 text-muted-foreground ml-5">
-                      <div>• Natural language conversation interface</div>
-                      <div>• No template syntax knowledge required</div>
-                      <div>• Multi-turn dialogue for strategy refinement</div>
-                      <div>• Automatic variable selection and optimization</div>
-                      <div>• Version management for prompt iterations</div>
+                      <div>• {t('premium.naturalLanguageInterface', 'Natural language conversation interface')}</div>
+                      <div>• {t('premium.noTemplateKnowledge', 'No template syntax knowledge required')}</div>
+                      <div>• {t('premium.multiTurnDialogue', 'Multi-turn dialogue for strategy refinement')}</div>
+                      <div>• {t('premium.autoVariableSelection', 'Automatic variable selection and optimization')}</div>
+                      <div>• {t('premium.versionManagement', 'Version management for prompt iterations')}</div>
                     </div>
                   </div>
 
@@ -370,7 +372,7 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
                     className="w-full h-8 text-xs bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
                   >
                     <Sparkles className="w-3 h-3 mr-1" />
-                    Start Write Strategy Prompt
+                    {t('premium.startWritePrompt', 'Start Write Strategy Prompt')}
                   </Button>
                 </CardContent>
               </Card>
@@ -381,7 +383,7 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
           <section className="space-y-4">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-primary" />
-              <h2 className="text-xl font-semibold">Analysis Tools</h2>
+              <h2 className="text-xl font-semibold">{t('premium.analysisTools', 'Analysis Tools')}</h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -390,11 +392,11 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
                 <CardHeader className="pb-3">
                   <div className="space-y-1">
                     <CardTitle className="flex items-center gap-2 text-lg">
-                      Technical Indicators Suite
-                      <Badge className="bg-green-500 text-white text-xs">Limited Time Free</Badge>
+                      {t('premium.technicalIndicatorsSuite', 'Technical Indicators Suite')}
+                      <Badge className="bg-green-500 text-white text-xs">{t('premium.limitedTimeFree', 'Limited Time Free')}</Badge>
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      11 professional-grade technical indicators across trend, momentum, and volatility analysis
+                      {t('premium.technicalIndicatorsDesc', '11 professional-grade technical indicators across trend, momentum, and volatility analysis')}
                     </CardDescription>
                   </div>
                 </CardHeader>
@@ -416,7 +418,7 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
                   </div>
 
                   <div className="p-2 bg-muted/50 rounded-lg text-xs text-muted-foreground">
-                    <div className="font-medium mb-1">Multi-Period Support</div>
+                    <div className="font-medium mb-1">{t('premium.multiPeriodSupport', 'Multi-Period Support')}</div>
                     <div>Available on 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 8h, 12h, 1d, 3d, 1w, 1M timeframes</div>
                   </div>
 
@@ -424,7 +426,7 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
                     onClick={() => onPageChange?.('klines')}
                     className="w-full h-8 text-xs"
                   >
-                    Try Now
+                    {t('premium.tryNow', 'Try Now')}
                   </Button>
                 </CardContent>
               </Card>
@@ -434,59 +436,59 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
                 <CardHeader className="pb-3">
                   <div className="space-y-1">
                     <CardTitle className="flex items-center gap-2 text-lg">
-                      AI Quantitative Analysis
-                      <Badge className="bg-green-500 text-white text-xs">Limited Time Free</Badge>
+                      {t('premium.aiQuantAnalysis', 'AI Quantitative Analysis')}
+                      <Badge className="bg-green-500 text-white text-xs">{t('premium.limitedTimeFree', 'Limited Time Free')}</Badge>
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Deep learning-powered market microstructure analysis with multi-dimensional signal extraction
+                      {t('premium.aiQuantAnalysisDesc', 'Deep learning-powered market microstructure analysis with multi-dimensional signal extraction')}
                     </CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-2">
                     <div className="p-2 bg-muted/50 rounded-lg">
-                      <div className="text-xs font-semibold mb-1">Pattern Recognition Engine</div>
+                      <div className="text-xs font-semibold mb-1">{t('premium.patternRecognition', 'Pattern Recognition Engine')}</div>
                       <div className="text-xs text-muted-foreground">
-                        • Classical formations: Head & Shoulders, Double Top/Bottom, Triangles, Wedges
+                        • {t('premium.classicalFormations', 'Classical formations: Head & Shoulders, Double Top/Bottom, Triangles, Wedges')}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        • Candlestick patterns: Doji, Engulfing, Hammer, Shooting Star, Morning/Evening Star
-                      </div>
-                    </div>
-
-                    <div className="p-2 bg-muted/50 rounded-lg">
-                      <div className="text-xs font-semibold mb-1">Multi-Timeframe Confluence Analysis</div>
-                      <div className="text-xs text-muted-foreground">
-                        • Cross-period trend alignment detection (1m to 1M)
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        • Support/Resistance level clustering across timeframes
+                        • {t('premium.candlestickPatterns', 'Candlestick patterns: Doji, Engulfing, Hammer, Shooting Star, Morning/Evening Star')}
                       </div>
                     </div>
 
                     <div className="p-2 bg-muted/50 rounded-lg">
-                      <div className="text-xs font-semibold mb-1">Quantitative Signal Generation</div>
+                      <div className="text-xs font-semibold mb-1">{t('premium.multiTimeframeAnalysis', 'Multi-Timeframe Confluence Analysis')}</div>
                       <div className="text-xs text-muted-foreground">
-                        • Momentum divergence detection (price vs. indicator)
+                        • {t('premium.crossPeriodTrend', 'Cross-period trend alignment detection (1m to 1M)')}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        • Volume-price relationship analysis
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        • Market structure break identification
+                        • {t('premium.supportResistance', 'Support/Resistance level clustering across timeframes')}
                       </div>
                     </div>
 
                     <div className="p-2 bg-muted/50 rounded-lg">
-                      <div className="text-xs font-semibold mb-1">Actionable Trading Insights</div>
+                      <div className="text-xs font-semibold mb-1">{t('premium.quantSignalGeneration', 'Quantitative Signal Generation')}</div>
                       <div className="text-xs text-muted-foreground">
-                        • Entry/Exit zone recommendations with probability scoring
+                        • {t('premium.momentumDivergence', 'Momentum divergence detection (price vs. indicator)')}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        • Risk/Reward ratio calculation and position sizing guidance
+                        • {t('premium.volumePriceAnalysis', 'Volume-price relationship analysis')}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        • Market regime classification (trending/ranging/volatile)
+                        • {t('premium.marketStructureBreak', 'Market structure break identification')}
+                      </div>
+                    </div>
+
+                    <div className="p-2 bg-muted/50 rounded-lg">
+                      <div className="text-xs font-semibold mb-1">{t('premium.actionableInsights', 'Actionable Trading Insights')}</div>
+                      <div className="text-xs text-muted-foreground">
+                        • {t('premium.entryExitZones', 'Entry/Exit zone recommendations with probability scoring')}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        • {t('premium.riskRewardCalc', 'Risk/Reward ratio calculation and position sizing guidance')}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        • {t('premium.marketRegime', 'Market regime classification (trending/ranging/volatile)')}
                       </div>
                     </div>
                   </div>
@@ -495,7 +497,7 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
                     onClick={() => onPageChange?.('klines')}
                     className="w-full h-8 text-xs"
                   >
-                    Launch Analysis
+                    {t('premium.launchAnalysis', 'Launch Analysis')}
                   </Button>
                 </CardContent>
               </Card>
@@ -506,41 +508,41 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
                   <div className="space-y-1">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <Zap className="w-5 h-5 text-yellow-500" />
-                      AI Signal Generator
-                      <Badge className="bg-green-500 text-white text-xs">Limited Time Free</Badge>
+                      {t('premium.aiSignalGenerator', 'AI Signal Generator')}
+                      <Badge className="bg-green-500 text-white text-xs">{t('premium.limitedTimeFree', 'Limited Time Free')}</Badge>
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Transform trading ideas into executable signals using natural language - no technical knowledge required
+                      {t('premium.aiSignalGeneratorDesc', 'Transform trading ideas into executable signals using natural language - no technical knowledge required')}
                     </CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-2">
                     <div className="p-2 bg-muted/50 rounded-lg">
-                      <div className="text-xs font-semibold mb-1">Natural Language to Signal</div>
+                      <div className="text-xs font-semibold mb-1">{t('premium.naturalLanguageToSignal', 'Natural Language to Signal')}</div>
                       <div className="text-xs text-muted-foreground">
-                        Describe what you want to monitor: &quot;Alert me when BTC open interest surges with high buying pressure&quot;
+                        {t('premium.naturalLanguageToSignalDesc', 'Describe what you want to monitor: "Alert me when BTC open interest surges with high buying pressure"')}
                       </div>
                     </div>
 
                     <div className="p-2 bg-muted/50 rounded-lg">
-                      <div className="text-xs font-semibold mb-1">Smart Parameter Optimization</div>
+                      <div className="text-xs font-semibold mb-1">{t('premium.smartParamOptimization', 'Smart Parameter Optimization')}</div>
                       <div className="text-xs text-muted-foreground">
-                        AI analyzes market data to suggest optimal thresholds - no guesswork needed
+                        {t('premium.smartParamOptimizationDesc', 'AI analyzes market data to suggest optimal thresholds - no guesswork needed')}
                       </div>
                     </div>
 
                     <div className="p-2 bg-muted/50 rounded-lg">
-                      <div className="text-xs font-semibold mb-1">Multi-Condition Logic</div>
+                      <div className="text-xs font-semibold mb-1">{t('premium.multiConditionLogic', 'Multi-Condition Logic')}</div>
                       <div className="text-xs text-muted-foreground">
-                        Combine CVD, OI, funding rate, order flow into sophisticated AND/OR signal pools
+                        {t('premium.multiConditionLogicDesc', 'Combine CVD, OI, funding rate, order flow into sophisticated AND/OR signal pools')}
                       </div>
                     </div>
 
                     <div className="p-2 bg-muted/50 rounded-lg">
-                      <div className="text-xs font-semibold mb-1">Trigger AI Trading</div>
+                      <div className="text-xs font-semibold mb-1">{t('premium.triggerAiTrading', 'Trigger AI Trading')}</div>
                       <div className="text-xs text-muted-foreground">
-                        Bind signals to AI accounts - when conditions hit, AI evaluates and executes
+                        {t('premium.triggerAiTradingDesc', 'Bind signals to AI accounts - when conditions hit, AI evaluates and executes')}
                       </div>
                     </div>
                   </div>
@@ -550,7 +552,7 @@ export default function PremiumFeaturesView({ onAccountUpdated, onPageChange }: 
                     className="w-full h-8 text-xs bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white border-0"
                   >
                     <Zap className="w-3 h-3 mr-1" />
-                    Create Signal with AI
+                    {t('premium.createSignalWithAI', 'Create Signal with AI')}
                   </Button>
                 </CardContent>
               </Card>

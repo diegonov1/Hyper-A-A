@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -71,6 +72,7 @@ interface HyperliquidActionStats {
 }
 
 export default function SystemLogs() {
+  const { t } = useTranslation()
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [stats, setStats] = useState<LogStats | null>(null)
   const [samplingPool, setSamplingPool] = useState<SamplingPoolData>({})
@@ -201,7 +203,7 @@ useEffect(() => {
   return (
     <div className="container mx-auto p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">System Logs</h1>
+        <h1 className="text-2xl font-bold">{t('logs.title', 'System Logs')}</h1>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -218,11 +220,11 @@ useEffect(() => {
             }}
           >
             <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
+            {t('logs.refresh', 'Refresh')}
           </Button>
           <Button variant="destructive" size="sm" onClick={clearLogs}>
             <Trash2 className="w-4 h-4 mr-2" />
-            Clear
+            {t('logs.clear', 'Clear')}
           </Button>
         </div>
       </div>
@@ -233,7 +235,7 @@ useEffect(() => {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Logs
+                {t('logs.totalLogs', 'Total Logs')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -244,7 +246,7 @@ useEffect(() => {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Errors
+                {t('logs.errors', 'Errors')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -257,7 +259,7 @@ useEffect(() => {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Warnings
+                {t('logs.warnings', 'Warnings')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -270,7 +272,7 @@ useEffect(() => {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                AI Decisions
+                {t('logs.aiDecisions', 'AI Decisions')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -285,24 +287,24 @@ useEffect(() => {
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="logs">System Logs</TabsTrigger>
-          <TabsTrigger value="sampling">Sampling Pool</TabsTrigger>
-          <TabsTrigger value="hyperliquid">Hyperliquid Actions</TabsTrigger>
+          <TabsTrigger value="logs">{t('logs.systemLogs', 'System Logs')}</TabsTrigger>
+          <TabsTrigger value="sampling">{t('logs.samplingPool', 'Sampling Pool')}</TabsTrigger>
+          <TabsTrigger value="hyperliquid">{t('logs.hyperliquidActions', 'Hyperliquid Actions')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="logs" className="space-y-4">
           {/* Filter Tabs */}
           <Card>
             <CardHeader>
-              <CardTitle>Filters</CardTitle>
+              <CardTitle>{t('logs.filters', 'Filters')}</CardTitle>
             </CardHeader>
             <CardContent>
               <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
                 <TabsList>
-                  <TabsTrigger value="all">All</TabsTrigger>
-                  <TabsTrigger value="ai_decision">AI Decisions</TabsTrigger>
-                  <TabsTrigger value="system_error">System Errors</TabsTrigger>
-                  <TabsTrigger value="price_update">Price Updates</TabsTrigger>
+                  <TabsTrigger value="all">{t('logs.all', 'All')}</TabsTrigger>
+                  <TabsTrigger value="ai_decision">{t('logs.aiDecisionsFilter', 'AI Decisions')}</TabsTrigger>
+                  <TabsTrigger value="system_error">{t('logs.systemErrors', 'System Errors')}</TabsTrigger>
+                  <TabsTrigger value="price_update">{t('logs.priceUpdates', 'Price Updates')}</TabsTrigger>
                 </TabsList>
               </Tabs>
 
@@ -312,7 +314,7 @@ useEffect(() => {
                   size="sm"
                   onClick={() => setSelectedLevel('all')}
                 >
-                  All Levels
+                  {t('logs.allLevels', 'All Levels')}
                 </Button>
                 <Button
                   variant={selectedLevel === 'INFO' ? 'default' : 'outline'}
@@ -345,13 +347,13 @@ useEffect(() => {
           {/* Log List */}
           <Card>
             <CardHeader>
-              <CardTitle>Log Details ({logs.length})</CardTitle>
+              <CardTitle>{t('logs.logDetails', 'Log Details')} ({logs.length})</CardTitle>
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[600px] pr-4">
                 {logs.length === 0 ? (
                   <div className="text-center text-muted-foreground py-8">
-                    No logs found
+                    {t('logs.noLogsFound', 'No logs found')}
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -382,7 +384,7 @@ useEffect(() => {
                               {log.details && Object.keys(log.details).length > 0 && (
                                 <details className="mt-2">
                                   <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-                                    View Details
+                                    {t('logs.viewDetails', 'View Details')}
                                   </summary>
                                   <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-x-auto">
                                     {JSON.stringify(log.details, null, 2)}
@@ -407,14 +409,14 @@ useEffect(() => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Database className="w-5 h-5" />
-                Sampling Pool Details
+                {t('logs.samplingPoolDetails', 'Sampling Pool Details')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[600px] pr-4">
                 {Object.keys(samplingPool).length === 0 ? (
                   <div className="text-center text-muted-foreground py-8">
-                    No sampling data available
+                    {t('logs.noSamplingData', 'No sampling data available')}
                   </div>
                 ) : (
                   <div className="space-y-6">
@@ -425,7 +427,7 @@ useEffect(() => {
                             <CardTitle className="text-lg">{symbol}</CardTitle>
                             <div className="flex items-center gap-4">
                               <Badge variant="outline">
-                                {data.sample_count} samples
+                                {data.sample_count} {t('logs.samples', 'samples')}
                               </Badge>
                               {data.price_change_percent !== null && data.price_change_percent !== undefined && (
                                 <Badge
@@ -441,7 +443,7 @@ useEffect(() => {
                         <CardContent>
                           <div className="space-y-2">
                             <div className="text-sm text-muted-foreground mb-3">
-                              Samples (oldest to newest):
+                              {t('logs.samplesOldestToNewest', 'Samples (oldest to newest)')}:
                             </div>
                             {data.samples.map((sample, index) => (
                               <div
@@ -471,47 +473,47 @@ useEffect(() => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                Hyperliquid Action Summary
+                {t('logs.hyperliquidActionSummary', 'Hyperliquid Action Summary')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {hyperliquidStats ? (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Requests</p>
+                    <p className="text-sm text-muted-foreground">{t('logs.totalRequests', 'Total Requests')}</p>
                     <p className="text-2xl font-bold">{hyperliquidStats.total}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Last 24h</p>
+                    <p className="text-sm text-muted-foreground">{t('logs.last24h', 'Last 24h')}</p>
                     <p className="text-2xl font-bold">{hyperliquidStats.last24h}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Success</p>
+                    <p className="text-sm text-muted-foreground">{t('logs.success', 'Success')}</p>
                     <p className="text-2xl font-bold text-green-500">{hyperliquidStats.success}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Errors</p>
+                    <p className="text-sm text-muted-foreground">{t('logs.errorsCount', 'Errors')}</p>
                     <p className="text-2xl font-bold text-red-500">{hyperliquidStats.error}</p>
                   </div>
                 </div>
               ) : (
-                <div className="text-muted-foreground">No stats available</div>
+                <div className="text-muted-foreground">{t('logs.noStatsAvailable', 'No stats available')}</div>
               )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Latest Actions ({hyperliquidActions.length})</CardTitle>
+              <CardTitle>{t('logs.latestActions', 'Latest Actions')} ({hyperliquidActions.length})</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Request weight total: {hyperliquidStats?.request_weight_sum ?? 0}
+                {t('logs.requestWeightTotal', 'Request weight total')}: {hyperliquidStats?.request_weight_sum ?? 0}
               </p>
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[600px] pr-4">
                 {hyperliquidActions.length === 0 ? (
                   <div className="text-center text-muted-foreground py-8">
-                    No Hyperliquid actions recorded yet
+                    {t('logs.noHyperliquidActions', 'No Hyperliquid actions recorded yet')}
                   </div>
                 ) : (
                   <div className="space-y-3">

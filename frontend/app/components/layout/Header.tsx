@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { User, LogOut, UserCog, ExternalLink, ChevronDown } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -34,6 +35,7 @@ interface HeaderProps {
 }
 
 export default function Header({ title = 'Hyper Alpha Arena', currentAccount, showAccountSelector = false }: HeaderProps) {
+  const { t } = useTranslation()
   const { user, loading, authEnabled, membership, logout } = useAuth()
   const currentExchangeInfo = useCurrentExchangeInfo()
   const [isExchangeModalOpen, setIsExchangeModalOpen] = useState(false)
@@ -84,7 +86,7 @@ export default function Header({ title = 'Hyper Alpha Arena', currentAccount, sh
             className="px-3 py-2 text-sm font-medium"
           >
             <span className="mr-2">🔥</span>
-            Exchanges:
+            {t('header.exchanges', 'Exchanges')}:
             <span className="ml-1 mr-1">
               <ExchangeIcon exchangeId={currentExchangeInfo.id} size={16} />
             </span>
@@ -92,7 +94,7 @@ export default function Header({ title = 'Hyper Alpha Arena', currentAccount, sh
             <ChevronDown className="ml-2 h-3 w-3" />
           </Button>
           {currentExchangeInfo.id === 'hyperliquid' && !isVipMember && (
-            <span className="text-xs text-muted-foreground ml-2">Subscribe to Premium for service fee 50% off.</span>
+            <span className="text-xs text-muted-foreground ml-2">{t('header.premiumDiscount', 'Subscribe to Premium for service fee 50% off.')}</span>
           )}
         </div>
 
@@ -144,17 +146,17 @@ export default function Header({ title = 'Hyper Alpha Arena', currentAccount, sh
                       <DropdownMenuItem className="cursor-default">
                         <img src="/static/vip_logo.png" alt="VIP" className="mr-2 h-4 w-4" />
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium text-yellow-600">VIP Member</span>
+                          <span className="text-sm font-medium text-yellow-600">{t('header.vipMember', 'VIP Member')}</span>
                           <span className="text-xs text-muted-foreground">
-                            {membership.planKey === 'yearly' ? 'Yearly Plan' : 'Monthly Plan'}
-                            {membership.currentPeriodEnd && ` • Expires ${formatExpiryDate(membership.currentPeriodEnd)}`}
+                            {membership.planKey === 'yearly' ? t('header.yearlyPlan', 'Yearly Plan') : t('header.monthlyPlan', 'Monthly Plan')}
+                            {membership.currentPeriodEnd && ` • ${t('header.expires', 'Expires')} ${formatExpiryDate(membership.currentPeriodEnd)}`}
                           </span>
                         </div>
                       </DropdownMenuItem>
                     ) : (
                       <DropdownMenuItem onClick={openPricingPage}>
                         <img src="/static/vip_no.png" alt="Upgrade" className="mr-2 h-4 w-4" />
-                        <span>Upgrade to VIP</span>
+                        <span>{t('header.upgradeToVip', 'Upgrade to VIP')}</span>
                         <ExternalLink className="ml-auto h-3 w-3" />
                       </DropdownMenuItem>
                     )}
@@ -162,11 +164,11 @@ export default function Header({ title = 'Hyper Alpha Arena', currentAccount, sh
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => window.open('https://account.akooi.com/account', '_blank')}>
                       <UserCog className="mr-2 h-4 w-4" />
-                      <span>My Account</span>
+                      <span>{t('header.myAccount', 'My Account')}</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={logout}>
                       <LogOut className="mr-2 h-4 w-4" />
-                      <span>Sign Out</span>
+                      <span>{t('header.signOut', 'Sign Out')}</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -176,7 +178,7 @@ export default function Header({ title = 'Hyper Alpha Arena', currentAccount, sh
                   size="sm"
                   className="px-4 py-2 text-sm font-medium"
                 >
-                  Sign Up
+                  {t('header.signUp', 'Sign Up')}
                 </Button>
               )}
             </>

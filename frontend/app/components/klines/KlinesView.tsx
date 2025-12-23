@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Button } from '../ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
@@ -31,6 +32,7 @@ interface BackfillTask {
 }
 
 export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
+  const { t } = useTranslation()
   const [selectedSymbol, setSelectedSymbol] = useState<string>('BTC')
   const [selectedPeriod, setSelectedPeriod] = useState<string>('1m')
   const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([])
@@ -241,7 +243,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
             </div>
           </div>
           <p className="text-xs text-muted-foreground text-center">
-            Backfilling in progress...
+            {t('kline.backfillInProgress', 'Backfilling in progress...')}
           </p>
         </div>
       )
@@ -255,10 +257,10 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
           className="w-full"
           size="sm"
         >
-          {loading ? 'Starting...' : 'Backfill Historical Data'}
+          {loading ? t('kline.starting', 'Starting...') : t('kline.backfillHistorical', 'Backfill Historical Data')}
         </Button>
         <p className="text-xs text-muted-foreground">
-          Backfill last 30 days of K-line data
+          {t('kline.backfillLast30Days', 'Backfill last 30 days of K-line data')}
         </p>
       </div>
     )
@@ -275,7 +277,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
               <div className="flex items-center gap-2">
                 <Select value={selectedSymbol} onValueChange={setSelectedSymbol}>
                   <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select Symbol" />
+                    <SelectValue placeholder={t('kline.selectSymbol', 'Select Symbol')} />
                   </SelectTrigger>
                   <SelectContent>
                     {watchlistSymbols.map(symbol => (
@@ -313,7 +315,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
               <div className="pt-2 border-t">
                 <p className="text-xs text-amber-600 font-medium flex items-center gap-1">
                   <span>⚠️</span>
-                  <span>K-line analysis is only available for Mainnet environment</span>
+                  <span>{t('kline.mainnetWarning', 'K-line analysis is only available for Mainnet environment')}</span>
                 </p>
               </div>
 
@@ -324,7 +326,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
           {/* Market Data */}
           <Card className="lg:col-span-2">
             <CardHeader className="py-2">
-              <CardTitle className="text-sm">Market Data</CardTitle>
+              <CardTitle className="text-sm">{t('kline.marketData', 'Market Data')}</CardTitle>
             </CardHeader>
             <CardContent className="pt-0 space-y-2">
               {selectedSymbol && (
@@ -334,29 +336,29 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
                     return data ? (
                       <>
                         <div>
-                          <p className="text-xs text-muted-foreground">Mark Price</p>
+                          <p className="text-xs text-muted-foreground">{t('kline.markPrice', 'Mark Price')}</p>
                           <p className="text-sm font-semibold">{data.price.toLocaleString()}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">Oracle Price</p>
+                          <p className="text-xs text-muted-foreground">{t('kline.oraclePrice', 'Oracle Price')}</p>
                           <p className="text-sm font-semibold">{data.oracle_price.toLocaleString()}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">24h Change</p>
+                          <p className="text-xs text-muted-foreground">{t('kline.change24h', '24h Change')}</p>
                           <p className={`text-sm font-semibold ${data.change24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             {data.percentage24h >= 0 ? "+" : ""}{data.percentage24h.toFixed(2)}%
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">24h Volume</p>
+                          <p className="text-xs text-muted-foreground">{t('kline.volume24h', '24h Volume')}</p>
                           <p className="text-sm font-semibold">${formatCompactNumber(data.volume24h)}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">Open Interest</p>
+                          <p className="text-xs text-muted-foreground">{t('kline.openInterest', 'Open Interest')}</p>
                           <p className="text-sm font-semibold">${formatCompactNumber(data.open_interest)}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">Funding Rate</p>
+                          <p className="text-xs text-muted-foreground">{t('kline.fundingRate', 'Funding Rate')}</p>
                           <p className="text-sm font-semibold">{(data.funding_rate * 100).toFixed(4)}%</p>
                         </div>
                       </>
@@ -364,7 +366,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
                       <div className="col-span-full text-center text-muted-foreground">
                         <div className="flex items-center justify-center gap-2">
                           <PacmanLoader className="w-12 h-6" />
-                          <span className="text-xs">Loading...</span>
+                          <span className="text-xs">{t('common.loading', 'Loading...')}</span>
                         </div>
                       </div>
                     )
@@ -373,7 +375,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
               )}
               {/* Market Flow Indicators */}
               <div className="flex items-center gap-2 pt-2 border-t">
-                <span className="text-xs text-muted-foreground font-medium">Flow</span>
+                <span className="text-xs text-muted-foreground font-medium">{t('kline.flow', 'Flow')}</span>
                 <div className="flex gap-1.5 flex-wrap">
                   {[
                     { key: 'cvd', label: 'CVD' },
@@ -406,12 +408,12 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
           {/* Technical Indicators */}
           <Card className="lg:col-span-2">
             <CardHeader className="py-3">
-              <CardTitle className="text-sm">Technical Indicators</CardTitle>
+              <CardTitle className="text-sm">{t('kline.technicalIndicators', 'Technical Indicators')}</CardTitle>
             </CardHeader>
             <CardContent className="pt-0 space-y-1.5">
               {/* Row 1: Trend */}
               <div className="flex items-center gap-2">
-                <span className="text-[9px] text-muted-foreground font-medium min-w-[52px]">Trend</span>
+                <span className="text-[9px] text-muted-foreground font-medium min-w-[52px]">{t('kline.trend', 'Trend')}</span>
                 <div className="flex gap-1 flex-wrap">
                   {['MA5', 'MA10', 'MA20', 'EMA20', 'EMA50', 'EMA100'].map(indicator => (
                     <button
@@ -437,7 +439,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
 
               {/* Row 2: Volume */}
               <div className="flex items-center gap-2">
-                <span className="text-[9px] text-muted-foreground font-medium min-w-[52px]">Volume</span>
+                <span className="text-[9px] text-muted-foreground font-medium min-w-[52px]">{t('kline.volume', 'Volume')}</span>
                 <div className="flex gap-1 flex-wrap">
                   {['VWAP', 'OBV'].map(indicator => (
                     <button
@@ -463,7 +465,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
 
               {/* Row 3: Momentum */}
               <div className="flex items-center gap-2">
-                <span className="text-[9px] text-muted-foreground font-medium min-w-[52px]">Momentum</span>
+                <span className="text-[9px] text-muted-foreground font-medium min-w-[52px]">{t('kline.momentum', 'Momentum')}</span>
                 <div className="flex gap-1 flex-wrap">
                   {['RSI14', 'RSI7', 'STOCH', 'MACD'].map(indicator => (
                     <button
@@ -489,7 +491,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
 
               {/* Row 4: Volatility */}
               <div className="flex items-center gap-2">
-                <span className="text-[9px] text-muted-foreground font-medium min-w-[52px]">Volatility</span>
+                <span className="text-[9px] text-muted-foreground font-medium min-w-[52px]">{t('kline.volatility', 'Volatility')}</span>
                 <div className="flex gap-1 flex-wrap">
                   {['BOLL', 'ATR14'].map(indicator => (
                     <button
@@ -522,12 +524,12 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <CardTitle className="text-sm">
-                  {selectedSymbol} K-Line Chart ({selectedPeriod})
+                  {selectedSymbol} {t('kline.chartTitle', 'K-Line Chart')} ({selectedPeriod})
                 </CardTitle>
                 {chartLoading && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <PacmanLoader className="w-12 h-6" />
-                    Loading K-line data...
+                    {t('kline.loadingKlineData', 'Loading K-line data...')}
                   </div>
                 )}
               </div>
@@ -540,7 +542,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
                       : 'hover:bg-muted'
                   }`}
                 >
-                  Candlestick
+                  {t('kline.candlestick', 'Candlestick')}
                 </button>
                 <button
                   onClick={() => setChartType('line')}
@@ -550,7 +552,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
                       : 'hover:bg-muted'
                   }`}
                 >
-                  Line
+                  {t('kline.line', 'Line')}
                 </button>
                 <button
                   onClick={() => setChartType('area')}
@@ -560,7 +562,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
                       : 'hover:bg-muted'
                   }`}
                 >
-                  Area
+                  {t('kline.area', 'Area')}
                 </button>
               </div>
             </div>
@@ -587,7 +589,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
       <div className="flex flex-col flex-[3] min-w-[300px] space-y-4">
         <Card className="flex-1 overflow-hidden">
           <CardHeader className="py-3">
-            <CardTitle className="text-sm">AI Analysis</CardTitle>
+            <CardTitle className="text-sm">{t('kline.aiAnalysis', 'AI Analysis')}</CardTitle>
           </CardHeader>
           <CardContent className="pt-0 h-full overflow-y-auto">
             <AIAnalysisPanel

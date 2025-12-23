@@ -19,6 +19,7 @@ import {
 import { approveBuilder, type UnauthorizedAccount } from '@/lib/api'
 import { copyToClipboard } from '@/lib/utils'
 import { AuthorizationModal } from '@/components/hyperliquid'
+import { useTranslation } from 'react-i18next'
 
 interface WalletConfigPanelProps {
   accountId: number
@@ -69,6 +70,7 @@ export default function WalletConfigPanel({
   accountName,
   onWalletConfigured
 }: WalletConfigPanelProps) {
+  const { t } = useTranslation()
   const [testnetWallet, setTestnetWallet] = useState<WalletData | null>(null)
   const [mainnetWallet, setMainnetWallet] = useState<WalletData | null>(null)
   const [loading, setLoading] = useState(false)
@@ -340,7 +342,7 @@ export default function WalletConfigPanel({
                 size="sm"
                 onClick={() => setEditing(true)}
               >
-                Edit
+                {t('common.edit', 'Edit')}
               </Button>
               <Button
                 variant="destructive"
@@ -358,7 +360,7 @@ export default function WalletConfigPanel({
           // Display existing wallet
           <div className="space-y-2">
             <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Wallet Address</label>
+              <label className="text-xs text-muted-foreground">{t('wallet.walletAddress', 'Wallet Address')}</label>
               <div className="flex items-center gap-2">
                 <code className="flex-1 px-2 py-1 bg-muted rounded text-xs" style={{maxWidth: '100%', overflow: "hidden"}}>
                   {wallet.walletAddress}
@@ -367,13 +369,13 @@ export default function WalletConfigPanel({
                   onClick={async () => {
                     const success = await copyToClipboard(wallet.walletAddress || '');
                     if (success) {
-                      toast.success('Wallet address copied to clipboard');
+                      toast.success(t('wallet.addressCopied', 'Wallet address copied to clipboard'));
                     } else {
-                      toast.error('Failed to copy');
+                      toast.error(t('wallet.copyFailed', 'Failed to copy'));
                     }
                   }}
                   className="cursor-pointer"
-                  title="Copy wallet address"
+                  title={t('wallet.copyAddress', 'Copy wallet address')}
                 >
                   <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
                 </button>
@@ -383,15 +385,15 @@ export default function WalletConfigPanel({
             {wallet.balance && (
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div>
-                  <div className="text-muted-foreground">Balance</div>
+                  <div className="text-muted-foreground">{t('wallet.balance', 'Balance')}</div>
                   <div className="font-medium">${wallet.balance.totalEquity.toFixed(2)}</div>
                 </div>
                 <div>
-                  <div className="text-muted-foreground">Available</div>
+                  <div className="text-muted-foreground">{t('wallet.available', 'Available')}</div>
                   <div className="font-medium">${wallet.balance.availableBalance.toFixed(2)}</div>
                 </div>
                 <div>
-                  <div className="text-muted-foreground">Margin</div>
+                  <div className="text-muted-foreground">{t('wallet.margin', 'Margin')}</div>
                   <div className="font-medium">{wallet.balance.marginUsagePercent.toFixed(1)}%</div>
                 </div>
               </div>
@@ -399,11 +401,11 @@ export default function WalletConfigPanel({
 
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div>
-                <div className="text-muted-foreground">Max Leverage</div>
+                <div className="text-muted-foreground">{t('wallet.maxLeverage', 'Max Leverage')}</div>
                 <div className="font-medium">{wallet.maxLeverage}x</div>
               </div>
               <div>
-                <div className="text-muted-foreground">Default Leverage</div>
+                <div className="text-muted-foreground">{t('wallet.defaultLeverage', 'Default Leverage')}</div>
                 <div className="font-medium">{wallet.defaultLeverage}x</div>
               </div>
             </div>
@@ -418,10 +420,10 @@ export default function WalletConfigPanel({
               {testing ? (
                 <>
                   <RefreshCw className="mr-2 h-3 w-3 animate-spin" />
-                  Testing...
+                  {t('wallet.testing', 'Testing...')}
                 </>
               ) : (
-                'Test Connection'
+                t('wallet.testConnection', 'Test Connection')
               )}
             </Button>
           </div>
@@ -431,13 +433,13 @@ export default function WalletConfigPanel({
             {!wallet && (
               <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
                 <p className="text-yellow-800">
-                  ⚠️ No {envName.toLowerCase()} wallet configured.
+                  ⚠️ {t('wallet.noWalletConfigured', 'No {{env}} wallet configured.', { env: envName.toLowerCase() })}
                 </p>
               </div>
             )}
 
             <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Private Key</label>
+              <label className="text-xs text-muted-foreground">{t('wallet.privateKey', 'Private Key')}</label>
               <div className="flex gap-2">
                 <Input
                   type={showKey ? 'text' : 'password'}
@@ -447,9 +449,9 @@ export default function WalletConfigPanel({
                     setPrivateKey(value)
                     const inputType = detectInputType(value)
                     if (inputType === 'wallet_address') {
-                      setInputWarning('This looks like a wallet ADDRESS (40 chars), not a private key (64 chars).')
+                      setInputWarning(t('wallet.addressWarning', 'This looks like a wallet ADDRESS (40 chars), not a private key (64 chars).'))
                     } else if (inputType === 'invalid' && value.trim()) {
-                      setInputWarning('Invalid format. Private key must be 64 hex characters.')
+                      setInputWarning(t('wallet.invalidFormat', 'Invalid format. Private key must be 64 hex characters.'))
                     } else {
                       setInputWarning(null)
                     }
@@ -458,10 +460,10 @@ export default function WalletConfigPanel({
                     const formatted = formatPrivateKey(e.target.value)
                     if (formatted !== privateKey && detectInputType(formatted) === 'valid_key') {
                       setPrivateKey(formatted)
-                      toast.success('Added 0x prefix automatically')
+                      toast.success(t('wallet.prefixAdded', 'Added 0x prefix automatically'))
                     }
                   }}
-                  placeholder="0x... or paste without 0x prefix"
+                  placeholder={t('wallet.privateKeyPlaceholder', '0x... or paste without 0x prefix')}
                   className={`font-mono text-xs h-8 ${inputWarning ? 'border-red-500' : ''}`}
                 />
                 <Button
@@ -478,13 +480,13 @@ export default function WalletConfigPanel({
                 <p className="text-xs text-red-500">{inputWarning}</p>
               )}
               <p className="text-xs text-muted-foreground">
-                64 hex chars (0x auto-added). DEX needs private key to sign on-chain transactions.
+                {t('wallet.privateKeyHint', '64 hex chars (0x auto-added). DEX needs private key to sign on-chain transactions.')}
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Max Leverage</label>
+                <label className="text-xs text-muted-foreground">{t('wallet.maxLeverage', 'Max Leverage')}</label>
                 <Input
                   type="number"
                   value={maxLeverage}
@@ -495,7 +497,7 @@ export default function WalletConfigPanel({
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Default Leverage</label>
+                <label className="text-xs text-muted-foreground">{t('wallet.defaultLeverage', 'Default Leverage')}</label>
                 <Input
                   type="number"
                   value={defaultLeverage}
@@ -517,10 +519,10 @@ export default function WalletConfigPanel({
                 {loading ? (
                   <>
                     <RefreshCw className="mr-2 h-3 w-3 animate-spin" />
-                    Saving...
+                    {t('wallet.saving', 'Saving...')}
                   </>
                 ) : (
-                  'Save Wallet'
+                  t('wallet.saveWallet', 'Save Wallet')
                 )}
               </Button>
               {editing && (
@@ -533,7 +535,7 @@ export default function WalletConfigPanel({
                   size="sm"
                   className="h-8 text-xs"
                 >
-                  Cancel
+                  {t('common.cancel', 'Cancel')}
                 </Button>
               )}
             </div>
@@ -557,7 +559,7 @@ export default function WalletConfigPanel({
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <Wallet className="h-4 w-4 text-muted-foreground" />
-        <h4 className="text-sm font-medium">Hyperliquid Wallets</h4>
+        <h4 className="text-sm font-medium">{t('wallet.hyperliquidWallets', 'Hyperliquid Wallets')}</h4>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -599,10 +601,9 @@ export default function WalletConfigPanel({
       </div>
 
       <div className="text-xs text-muted-foreground bg-blue-50 border border-blue-200 rounded p-2">
-        <p className="font-medium text-blue-900 mb-1">💡 Multi-Wallet Setup</p>
+        <p className="font-medium text-blue-900 mb-1">💡 {t('wallet.multiWalletSetup', 'Multi-Wallet Setup')}</p>
         <p className="text-blue-800">
-          Each AI Trader can have separate wallets for testnet (paper trading) and mainnet (real funds).
-          Configure both to seamlessly switch between environments without reconfiguring.
+          {t('wallet.multiWalletDesc', 'Each AI Trader can have separate wallets for testnet (paper trading) and mainnet (real funds). Configure both to seamlessly switch between environments without reconfiguring.')}
         </p>
       </div>
 

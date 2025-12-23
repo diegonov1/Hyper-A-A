@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
@@ -52,6 +53,7 @@ export default function AiPromptChatModal({
   accountsLoading,
   onApplyPrompt,
 }: AiPromptChatModalProps) {
+  const { t } = useTranslation()
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loadingConversations, setLoadingConversations] = useState(false)
@@ -99,7 +101,7 @@ export default function AiPromptChatModal({
         const data = await response.json()
         setConversations(data.conversations || [])
       } else if (response.status === 403) {
-        toast.error('This feature is only available for premium members')
+        toast.error(t('aiPrompt.premiumOnly', 'This feature is only available for premium members'))
         onOpenChange(false)
       }
     } catch (error) {
@@ -145,7 +147,7 @@ export default function AiPromptChatModal({
     }
 
     if (!selectedAccountId) {
-      toast.error('Please select an AI Trader first')
+      toast.error(t('aiPrompt.selectTraderFirst', 'Please select an AI Trader first'))
       return
     }
 
@@ -174,7 +176,7 @@ export default function AiPromptChatModal({
 
       if (!response.ok) {
         if (response.status === 403) {
-          toast.error('This feature is only available for premium members')
+          toast.error(t('aiPrompt.premiumOnly', 'This feature is only available for premium members'))
           onOpenChange(false)
           return
         }
@@ -212,13 +214,13 @@ export default function AiPromptChatModal({
           })
         }
       } else {
-        toast.error(data.error || 'Failed to generate response')
+        toast.error(data.error || t('aiPrompt.generateFailed', 'Failed to generate response'))
         // Remove optimistic user message on error
         setMessages(prev => prev.filter(m => m.id !== tempUserMsg.id))
       }
     } catch (error) {
       console.error('Error sending message:', error)
-      toast.error('Failed to send message')
+      toast.error(t('aiPrompt.sendFailed', 'Failed to send message'))
       setMessages(prev => prev.filter(m => m.id !== tempUserMsg.id))
     } finally {
       setLoading(false)
@@ -231,7 +233,7 @@ export default function AiPromptChatModal({
     const prompt = extractedPrompts[idx]
     if (prompt) {
       onApplyPrompt(prompt.content)
-      toast.success('Prompt applied to editor')
+      toast.success(t('aiPrompt.promptApplied', 'Prompt applied to editor'))
       onOpenChange(false)
     }
   }
@@ -253,21 +255,21 @@ export default function AiPromptChatModal({
       >
         <DialogHeader className="px-6 py-4 border-b">
           <div className="flex items-center justify-between">
-            <DialogTitle>AI Strategy Prompt Generator</DialogTitle>
+            <DialogTitle>{t('aiPrompt.title', 'AI Strategy Prompt Generator')}</DialogTitle>
             {(accountsLoading || loadingConversations) && (
               <PacmanLoader className="w-8 h-4" />
             )}
           </div>
           <div className="flex items-center gap-4 mt-4">
             <div className="flex-1">
-              <label className="text-xs text-muted-foreground mb-1 block">AI Trader</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('aiPrompt.aiTrader', 'AI Trader')}</label>
               <Select
                 value={selectedAccountId?.toString()}
                 onValueChange={(val) => setSelectedAccountId(parseInt(val))}
                 disabled={accountsLoading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={accountsLoading ? "Loading..." : "Select AI Trader"} />
+                  <SelectValue placeholder={accountsLoading ? t('common.loading', 'Loading...') : t('aiPrompt.selectAiTrader', 'Select AI Trader')} />
                 </SelectTrigger>
                 <SelectContent>
                   {aiAccounts.map(acc => (
@@ -279,7 +281,7 @@ export default function AiPromptChatModal({
               </Select>
             </div>
             <div className="flex-1">
-              <label className="text-xs text-muted-foreground mb-1 block">Conversation</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('aiPrompt.conversation', 'Conversation')}</label>
               <div className="flex gap-2">
                 <Select
                   value={currentConversationId?.toString() || 'new'}
@@ -293,13 +295,13 @@ export default function AiPromptChatModal({
                   disabled={loadingConversations}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={loadingConversations ? "Loading..." : "New Conversation"} />
+                    <SelectValue placeholder={loadingConversations ? t('common.loading', 'Loading...') : t('aiPrompt.newConversation', 'New Conversation')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="new">New Conversation</SelectItem>
+                    <SelectItem value="new">{t('aiPrompt.newConversation', 'New Conversation')}</SelectItem>
                     {conversations.map(conv => (
                       <SelectItem key={conv.id} value={conv.id.toString()}>
-                        {conv.title} ({conv.messageCount} msgs)
+                        {conv.title} ({conv.messageCount} {t('aiPrompt.msgs', 'msgs')})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -310,7 +312,7 @@ export default function AiPromptChatModal({
                   onClick={startNewConversation}
                   className="shrink-0"
                 >
-                  New
+                  {t('aiPrompt.new', 'New')}
                 </Button>
               </div>
             </div>
@@ -324,8 +326,8 @@ export default function AiPromptChatModal({
               <div className="space-y-4">
                 {messages.length === 0 && (
                   <div className="text-center text-muted-foreground py-8">
-                    <p className="text-sm">Start by describing your trading strategy</p>
-                    <p className="text-xs mt-2">Example: "I want a trend-following strategy using MA crossovers"</p>
+                    <p className="text-sm">{t('aiPrompt.startHint', 'Start by describing your trading strategy')}</p>
+                    <p className="text-xs mt-2">{t('aiPrompt.example', 'Example: "I want a trend-following strategy using MA crossovers"')}</p>
                   </div>
                 )}
                 {messages.map((msg) => (
@@ -341,7 +343,7 @@ export default function AiPromptChatModal({
                       }`}
                     >
                       <div className="text-xs font-semibold mb-1 opacity-70">
-                        {msg.role === 'user' ? 'You' : 'AI Assistant'}
+                        {msg.role === 'user' ? t('aiPrompt.you', 'You') : t('aiPrompt.aiAssistant', 'AI Assistant')}
                       </div>
                       <div className={`text-sm prose prose-sm max-w-none ${msg.role === 'user' ? 'prose-invert' : 'dark:prose-invert'}`}>
                         <ReactMarkdown
@@ -377,7 +379,7 @@ export default function AiPromptChatModal({
             <div className="p-4 border-t">
               <div className="flex gap-2 items-end">
                 <textarea
-                  placeholder="Describe your strategy or ask for modifications..."
+                  placeholder={t('aiPrompt.inputPlaceholder', 'Describe your strategy or ask for modifications...')}
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -395,11 +397,11 @@ export default function AiPromptChatModal({
                   disabled={loading || !userInput.trim() || !selectedAccountId}
                   className="h-[80px]"
                 >
-                  {loading ? 'Sending...' : 'Send'}
+                  {loading ? t('aiPrompt.sending', 'Sending...') : t('aiPrompt.send', 'Send')}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                Press Enter to send, Shift+Enter for new line
+                {t('aiPrompt.keyboardHint', 'Press Enter to send, Shift+Enter for new line')}
               </p>
             </div>
           </div>
@@ -409,11 +411,11 @@ export default function AiPromptChatModal({
             <div className="p-4 border-b">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold">Generated Prompts</h3>
+                  <h3 className="text-sm font-semibold">{t('aiPrompt.generatedPrompts', 'Generated Prompts')}</h3>
                   <p className="text-xs text-muted-foreground mt-1">
                     {extractedPrompts.length > 0
-                      ? `${extractedPrompts.length} version${extractedPrompts.length > 1 ? 's' : ''} available`
-                      : 'The AI-generated strategy prompt will appear here'}
+                      ? t('aiPrompt.versionsAvailable', '{{count}} version(s) available').replace('{{count}}', extractedPrompts.length.toString())
+                      : t('aiPrompt.promptWillAppear', 'The AI-generated strategy prompt will appear here')}
                   </p>
                 </div>
                 {extractedPrompts.length > 1 && (
@@ -425,7 +427,7 @@ export default function AiPromptChatModal({
                       disabled={selectedPromptIndex === 0}
                       className="h-7 px-2"
                     >
-                      ← Prev
+                      ← {t('aiPrompt.prev', 'Prev')}
                     </Button>
                     <span className="text-xs text-muted-foreground">
                       {selectedPromptIndex + 1} / {extractedPrompts.length}
@@ -437,7 +439,7 @@ export default function AiPromptChatModal({
                       disabled={selectedPromptIndex === extractedPrompts.length - 1}
                       className="h-7 px-2"
                     >
-                      Next →
+                      {t('aiPrompt.next', 'Next')} →
                     </Button>
                   </div>
                 )}
@@ -449,8 +451,8 @@ export default function AiPromptChatModal({
                 <div className="space-y-4">
                   {extractedPrompts.length > 1 && (
                     <div className="text-xs text-muted-foreground bg-muted/50 rounded p-2">
-                      Version {selectedPromptIndex + 1} of {extractedPrompts.length}
-                      {selectedPromptIndex === extractedPrompts.length - 1 && ' (Latest)'}
+                      {t('aiPrompt.versionOf', 'Version {{current}} of {{total}}').replace('{{current}}', (selectedPromptIndex + 1).toString()).replace('{{total}}', extractedPrompts.length.toString())}
+                      {selectedPromptIndex === extractedPrompts.length - 1 && ` (${t('aiPrompt.latest', 'Latest')})`}
                     </div>
                   )}
                   <div className="rounded-lg overflow-hidden border">
@@ -470,9 +472,9 @@ export default function AiPromptChatModal({
               ) : (
                 <div className="flex items-center justify-center h-full text-muted-foreground">
                   <div className="text-center">
-                    <p className="text-sm">No prompt generated yet</p>
+                    <p className="text-sm">{t('aiPrompt.noPromptYet', 'No prompt generated yet')}</p>
                     <p className="text-xs mt-2">
-                      Start a conversation to generate a strategy prompt
+                      {t('aiPrompt.startConversation', 'Start a conversation to generate a strategy prompt')}
                     </p>
                   </div>
                 </div>
@@ -488,17 +490,17 @@ export default function AiPromptChatModal({
                     if (currentPrompt) {
                       const success = await copyToClipboard(currentPrompt.content)
                       if (success) {
-                        toast.success('Prompt copied to clipboard')
+                        toast.success(t('aiPrompt.copied', 'Prompt copied to clipboard'))
                       } else {
-                        toast.error('Failed to copy to clipboard')
+                        toast.error(t('aiPrompt.copyFailed', 'Failed to copy to clipboard'))
                       }
                     }
                   }}
                 >
-                  Copy
+                  {t('aiPrompt.copy', 'Copy')}
                 </Button>
                 <Button onClick={() => handleApplyPrompt()}>
-                  Apply to Editor
+                  {t('aiPrompt.applyToEditor', 'Apply to Editor')}
                 </Button>
               </div>
             )}

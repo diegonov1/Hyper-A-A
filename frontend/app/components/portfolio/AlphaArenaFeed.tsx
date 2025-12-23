@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   ArenaAccountMeta,
@@ -64,6 +65,7 @@ export default function AlphaArenaFeed({
   onSelectedAccountChange,
   walletAddress,
 }: AlphaArenaFeedProps) {
+  const { t } = useTranslation()
   const { getData, updateData } = useArenaData()
   const { tradingMode } = useTradingMode()
   const [activeTab, setActiveTab] = useState<FeedTab>('trades')
@@ -659,7 +661,7 @@ export default function AlphaArenaFeed({
     <div className="flex flex-col flex-1 min-h-0">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Filter</span>
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('feed.filter', 'Filter')}</span>
           <select
             value={activeAccount === 'all' ? '' : activeAccount}
             onChange={(e) => {
@@ -668,7 +670,7 @@ export default function AlphaArenaFeed({
             }}
             className="h-8 rounded border border-border bg-muted px-2 text-xs uppercase tracking-wide text-foreground"
           >
-            <option value="">All Traders</option>
+            <option value="">{t('feed.allTraders', 'All Traders')}</option>
             {accountOptions.map((meta) => (
               <option key={meta.account_id} value={meta.account_id}>
                 {meta.name}{meta.model ? ` (${meta.model})` : ''}
@@ -681,7 +683,7 @@ export default function AlphaArenaFeed({
             className="h-8 rounded border border-border bg-muted px-2 text-xs uppercase tracking-wide text-foreground"
             disabled={symbolOptions.length === 0}
           >
-            <option value="">All Symbols</option>
+            <option value="">{t('feed.allSymbols', 'All Symbols')}</option>
             {symbolOptions.map((sym) => (
               <option key={sym} value={sym}>
                 {sym}
@@ -691,7 +693,7 @@ export default function AlphaArenaFeed({
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleRefreshClick} disabled={loadingTrades || loadingModelChat || loadingPositions}>
-            Refresh
+            {t('common.refresh', 'Refresh')}
           </Button>
         </div>
       </div>
@@ -703,13 +705,13 @@ export default function AlphaArenaFeed({
       >
         <TabsList className="grid grid-cols-3 gap-0 border border-border bg-muted text-foreground">
           <TabsTrigger value="trades" className="data-[state=active]:bg-background data-[state=active]:text-foreground border-r border-border text-[10px] md:text-xs">
-            COMPLETED TRADES
+            {t('feed.completedTrades', 'COMPLETED TRADES')}
           </TabsTrigger>
           <TabsTrigger value="model-chat" className="data-[state=active]:bg-background data-[state=active]:text-foreground border-r border-border text-[10px] md:text-xs">
-            MODELCHAT
+            {t('feed.modelChat', 'MODELCHAT')}
           </TabsTrigger>
           <TabsTrigger value="positions" className="data-[state=active]:bg-background data-[state=active]:text-foreground text-[10px] md:text-xs">
-            POSITIONS
+            {t('feed.positions', 'POSITIONS')}
           </TabsTrigger>
         </TabsList>
 
@@ -724,9 +726,9 @@ export default function AlphaArenaFeed({
             <>
               <TabsContent value="trades" className="flex-1 h-0 overflow-y-auto mt-0 p-4 space-y-4">
                 {loadingTrades && trades.length === 0 ? (
-                  <div className="text-xs text-muted-foreground">Loading trades...</div>
+                  <div className="text-xs text-muted-foreground">{t('feed.loadingTrades', 'Loading trades...')}</div>
                 ) : trades.length === 0 ? (
-                  <div className="text-xs text-muted-foreground">No recent trades found.</div>
+                  <div className="text-xs text-muted-foreground">{t('feed.noTrades', 'No recent trades found.')}</div>
                 ) : (
                   trades.map((trade) => {
                     const modelLogo = getModelLogo(trade.account_name || trade.model)
@@ -753,7 +755,7 @@ export default function AlphaArenaFeed({
                         </div>
                         <div className="text-sm text-foreground flex flex-wrap items-center gap-2">
                           <span className="font-semibold">{trade.account_name}</span>
-                          <span>completed a</span>
+                          <span>{t('feed.completedA', 'completed a')}</span>
                           <span className={`px-2 py-1 rounded text-xs font-bold ${
                             trade.side === 'BUY'
                               ? 'bg-emerald-100 text-emerald-800'
@@ -767,31 +769,31 @@ export default function AlphaArenaFeed({
                           }`}>
                             {trade.side}
                           </span>
-                          <span>trade on</span>
+                          <span>{t('feed.tradeOn', 'trade on')}</span>
                           <span className="font-semibold">{trade.symbol}</span>
                           <span>!</span>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-muted-foreground">
                           <div>
-                            <span className="block text-[10px] uppercase tracking-wide">Price</span>
+                            <span className="block text-[10px] uppercase tracking-wide">{t('feed.price', 'Price')}</span>
                             <span className="font-medium text-foreground">
                               <FlipNumber value={trade.price} prefix="$" decimals={2} />
                             </span>
                           </div>
                           <div>
-                            <span className="block text-[10px] uppercase tracking-wide">Quantity</span>
+                            <span className="block text-[10px] uppercase tracking-wide">{t('feed.quantity', 'Quantity')}</span>
                             <span className="font-medium text-foreground">
                               <FlipNumber value={trade.quantity} decimals={4} />
                             </span>
                           </div>
                           <div>
-                            <span className="block text-[10px] uppercase tracking-wide">Notional</span>
+                            <span className="block text-[10px] uppercase tracking-wide">{t('feed.notional', 'Notional')}</span>
                             <span className="font-medium text-foreground">
                               <FlipNumber value={trade.notional} prefix="$" decimals={2} />
                             </span>
                           </div>
                           <div>
-                            <span className="block text-[10px] uppercase tracking-wide">Commission</span>
+                            <span className="block text-[10px] uppercase tracking-wide">{t('feed.commission', 'Commission')}</span>
                             <span className="font-medium text-foreground">
                               <FlipNumber value={trade.commission} prefix="$" decimals={2} />
                             </span>
@@ -806,9 +808,9 @@ export default function AlphaArenaFeed({
 
               <TabsContent value="model-chat" className="flex-1 h-0 overflow-y-auto mt-0 p-4 space-y-3">
                 {loadingModelChat && modelChat.length === 0 ? (
-                  <div className="text-xs text-muted-foreground">Loading model chat…</div>
+                  <div className="text-xs text-muted-foreground">{t('feed.loadingModelChat', 'Loading model chat...')}</div>
                 ) : modelChat.length === 0 ? (
-                  <div className="text-xs text-muted-foreground">No recent AI commentary.</div>
+                  <div className="text-xs text-muted-foreground">{t('feed.noModelChat', 'No recent AI commentary.')}</div>
                 ) : (
                   <>
                   {modelChat.map((entry) => {
@@ -886,20 +888,20 @@ export default function AlphaArenaFeed({
                               const snapshots = getSnapshotData(entry)
                               const isLoadingEntry = loadingSnapshots.has(entry.id)
                               return [{
-                                label: 'USER_PROMPT' as const,
+                                label: t('feed.userPrompt', 'USER PROMPT'),
                                 section: 'prompt' as const,
                                 content: snapshots.prompt_snapshot,
-                                empty: 'No prompt available',
+                                empty: t('feed.noPrompt', 'No prompt available'),
                               }, {
-                                label: 'CHAIN_OF_THOUGHT' as const,
+                                label: t('feed.chainOfThought', 'CHAIN OF THOUGHT'),
                                 section: 'reasoning' as const,
                                 content: snapshots.reasoning_snapshot,
-                                empty: 'No reasoning available',
+                                empty: t('feed.noReasoning', 'No reasoning available'),
                               }, {
-                                label: 'TRADING_DECISIONS' as const,
+                                label: t('feed.tradingDecisions', 'TRADING DECISIONS'),
                                 section: 'decision' as const,
                                 content: snapshots.decision_snapshot,
-                                empty: 'No decision payload available',
+                                empty: t('feed.noDecision', 'No decision payload available'),
                               }].map(({ label, section, content, empty }) => {
                               const open = isSectionExpanded(entry.id, section)
                               const displayContent = content?.trim()
@@ -918,9 +920,9 @@ export default function AlphaArenaFeed({
                                   >
                                     <span className="flex items-center gap-2">
                                       <span className="text-xs">{open ? '▼' : '▶'}</span>
-                                      {label.replace(/_/g, ' ')}
+                                      {label}
                                     </span>
-                                    <span className="text-[10px] text-muted-foreground/80">{open ? 'Hide details' : 'Show details'}</span>
+                                    <span className="text-[10px] text-muted-foreground/80">{open ? t('feed.hideDetails', 'Hide details') : t('feed.showDetails', 'Show details')}</span>
                                   </button>
                                   {open && (
                                     <div
@@ -930,7 +932,7 @@ export default function AlphaArenaFeed({
                                       {showLoading ? (
                                         <div className="flex items-center gap-2 text-muted-foreground/70">
                                           <Loader2 className="w-3 h-3 animate-spin" />
-                                          <span>Loading...</span>
+                                          <span>{t('feed.loading', 'Loading...')}</span>
                                         </div>
                                       ) : displayContent ? (
                                         <>
@@ -952,7 +954,7 @@ export default function AlphaArenaFeed({
                                                   : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/60'
                                               }`}
                                             >
-                                              {copied ? '✓ Copied' : 'Copy'}
+                                              {copied ? `✓ ${t('feed.copied', 'Copied')}` : t('feed.copy', 'Copy')}
                                             </button>
                                           </div>
                                         </>
@@ -968,15 +970,15 @@ export default function AlphaArenaFeed({
                           </div>
                         )}
                         <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground uppercase tracking-wide">
-                          <span>Prev Portion: <span className="font-semibold text-foreground">{(entry.prev_portion * 100).toFixed(1)}%</span></span>
-                          <span>Target Portion: <span className="font-semibold text-foreground">{(entry.target_portion * 100).toFixed(1)}%</span></span>
-                          <span>Total Balance: <span className="font-semibold text-foreground">
+                          <span>{t('feed.prevPortion', 'Prev Portion')}: <span className="font-semibold text-foreground">{(entry.prev_portion * 100).toFixed(1)}%</span></span>
+                          <span>{t('feed.targetPortion', 'Target Portion')}: <span className="font-semibold text-foreground">{(entry.target_portion * 100).toFixed(1)}%</span></span>
+                          <span>{t('feed.totalBalance', 'Total Balance')}: <span className="font-semibold text-foreground">
                             <FlipNumber value={entry.total_balance} prefix="$" decimals={2} />
                           </span></span>
-                          <span>Executed: <span className={`font-semibold ${entry.executed ? 'text-emerald-600' : 'text-amber-600'}`}>{entry.executed ? 'YES' : 'NO'}</span></span>
+                          <span>{t('feed.executed', 'Executed')}: <span className={`font-semibold ${entry.executed ? 'text-emerald-600' : 'text-amber-600'}`}>{entry.executed ? 'YES' : 'NO'}</span></span>
                         </div>
                         <div className="mt-2 text-[11px] text-primary underline">
-                          {isExpanded ? 'Click to collapse' : 'Click to expand'}
+                          {isExpanded ? t('feed.clickCollapse', 'Click to collapse') : t('feed.clickExpand', 'Click to expand')}
                         </div>
                         </button>
                       </HighlightWrapper>
@@ -996,10 +998,10 @@ export default function AlphaArenaFeed({
                         {isLoadingMoreModelChat ? (
                           <>
                             <Loader2 className="w-3 h-3 mr-2 animate-spin" />
-                            Loading...
+                            {t('feed.loading', 'Loading...')}
                           </>
                         ) : (
-                          'Load More History'
+                          t('feed.loadMore', 'Load More History')
                         )}
                       </Button>
                     </div>
@@ -1007,7 +1009,7 @@ export default function AlphaArenaFeed({
 
                   {!hasMoreModelChat && modelChat.length > 0 && (
                     <div className="flex justify-center pt-4 text-xs text-muted-foreground">
-                      All history loaded
+                      {t('feed.allLoaded', 'All history loaded')}
                     </div>
                   )}
                   </>
@@ -1016,9 +1018,9 @@ export default function AlphaArenaFeed({
 
               <TabsContent value="positions" className="flex-1 h-0 overflow-y-auto mt-0 p-4 space-y-4">
                 {loadingPositions && positions.length === 0 ? (
-                  <div className="text-xs text-muted-foreground">Loading positions…</div>
+                  <div className="text-xs text-muted-foreground">{t('feed.loadingPositions', 'Loading positions...')}</div>
                 ) : positions.length === 0 ? (
-                  <div className="text-xs text-muted-foreground">No active positions currently.</div>
+                  <div className="text-xs text-muted-foreground">{t('feed.noPositions', 'No active positions currently.')}</div>
                 ) : (
                   positions.map((snapshot) => {
                     const marginUsageClass =
@@ -1044,25 +1046,25 @@ export default function AlphaArenaFeed({
                           </div>
                           <div className="flex flex-wrap items-center gap-4 text-xs uppercase tracking-wide text-muted-foreground">
                             <div>
-                              <span className="block text-[10px] text-muted-foreground">Total Equity</span>
+                              <span className="block text-[10px] text-muted-foreground">{t('feed.totalEquity', 'Total Equity')}</span>
                               <span className="font-semibold text-foreground">
                                 <FlipNumber value={snapshot.total_assets} prefix="$" decimals={2} />
                               </span>
                             </div>
                             <div>
-                              <span className="block text-[10px] text-muted-foreground">Available Cash</span>
+                              <span className="block text-[10px] text-muted-foreground">{t('feed.availableCash', 'Available Cash')}</span>
                               <span className="font-semibold text-foreground">
                                 <FlipNumber value={snapshot.available_cash} prefix="$" decimals={2} />
                               </span>
                             </div>
                             <div>
-                              <span className="block text-[10px] text-muted-foreground">Used Margin</span>
+                              <span className="block text-[10px] text-muted-foreground">{t('feed.usedMargin', 'Used Margin')}</span>
                               <span className="font-semibold text-foreground">
                                 <FlipNumber value={snapshot.used_margin ?? 0} prefix="$" decimals={2} />
                               </span>
                             </div>
                             <div>
-                              <span className="block text-[10px] text-muted-foreground">Margin Usage</span>
+                              <span className="block text-[10px] text-muted-foreground">{t('feed.marginUsage', 'Margin Usage')}</span>
                               <span className={`font-semibold ${marginUsageClass}`}>
                                 {snapshot.margin_usage_percent !== undefined && snapshot.margin_usage_percent !== null
                                   ? `${snapshot.margin_usage_percent.toFixed(2)}%`
@@ -1070,13 +1072,13 @@ export default function AlphaArenaFeed({
                               </span>
                             </div>
                             <div>
-                              <span className="block text-[10px] text-muted-foreground">Unrealized P&L</span>
+                              <span className="block text-[10px] text-muted-foreground">{t('feed.unrealizedPnl', 'Unrealized P&L')}</span>
                               <span className={`font-semibold ${snapshot.total_unrealized_pnl >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                                 <FlipNumber value={snapshot.total_unrealized_pnl} prefix="$" decimals={2} />
                               </span>
                             </div>
                             <div>
-                              <span className="block text-[10px] text-muted-foreground">Total Return</span>
+                              <span className="block text-[10px] text-muted-foreground">{t('feed.totalReturn', 'Total Return')}</span>
                               <span className={`font-semibold ${snapshot.total_return && snapshot.total_return >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                                 {formatPercent(snapshot.total_return)}
                               </span>
@@ -1087,16 +1089,16 @@ export default function AlphaArenaFeed({
                           <table className="min-w-[980px] divide-y divide-border">
                             <thead className="bg-muted/50">
                               <tr className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                                <th className="px-4 py-2 text-left">Side</th>
-                                <th className="px-4 py-2 text-left">Coin</th>
-                                <th className="px-4 py-2 text-left">Size</th>
-                                <th className="px-4 py-2 text-left">Entry / Current</th>
-                                <th className="px-4 py-2 text-left">Leverage</th>
-                                <th className="px-4 py-2 text-left">Margin Used</th>
-                                <th className="px-4 py-2 text-left">Notional</th>
-                                <th className="px-4 py-2 text-left">Current Value</th>
-                                <th className="px-4 py-2 text-left">Unreal P&L</th>
-                                <th className="px-4 py-2 text-left">Portfolio %</th>
+                                <th className="px-4 py-2 text-left">{t('feed.side', 'Side')}</th>
+                                <th className="px-4 py-2 text-left">{t('feed.coin', 'Coin')}</th>
+                                <th className="px-4 py-2 text-left">{t('feed.size', 'Size')}</th>
+                                <th className="px-4 py-2 text-left">{t('feed.entryCurrent', 'Entry / Current')}</th>
+                                <th className="px-4 py-2 text-left">{t('feed.leverage', 'Leverage')}</th>
+                                <th className="px-4 py-2 text-left">{t('feed.marginUsedCol', 'Margin Used')}</th>
+                                <th className="px-4 py-2 text-left">{t('feed.notional', 'Notional')}</th>
+                                <th className="px-4 py-2 text-left">{t('feed.currentValue', 'Current Value')}</th>
+                                <th className="px-4 py-2 text-left">{t('feed.unrealizedPnl', 'Unreal P&L')}</th>
+                                <th className="px-4 py-2 text-left">{t('feed.portfolioPercent', 'Portfolio %')}</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-border text-xs text-muted-foreground">

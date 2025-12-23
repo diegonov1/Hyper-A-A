@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'react-hot-toast'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -53,6 +54,7 @@ const DEFAULT_BINDING_FORM: BindingFormState = {
 }
 
 export default function PromptManager() {
+  const { t, i18n } = useTranslation()
   const [templates, setTemplates] = useState<PromptTemplate[]>([])
   const [bindings, setBindings] = useState<PromptBinding[]>([])
   const [accounts, setAccounts] = useState<TradingAccount[]>([])
@@ -88,6 +90,13 @@ export default function PromptManager() {
   const [variablesRefModalOpen, setVariablesRefModalOpen] = useState(false)
   const [variablesRefContent, setVariablesRefContent] = useState<string>('')
   const [variablesRefLoading, setVariablesRefLoading] = useState(false)
+  const [variablesRefLang, setVariablesRefLang] = useState<string>('')
+
+  // Clear cached content when language changes
+  useEffect(() => {
+    setVariablesRefContent('')
+    setVariablesRefLang('')
+  }, [i18n.language])
 
   // Auth context
   const { user, membership } = useAuth()
@@ -361,14 +370,17 @@ export default function PromptManager() {
 
   const handleOpenVariablesRef = async () => {
     setVariablesRefModalOpen(true)
-    if (!variablesRefContent) {
+    const currentLang = i18n.language.startsWith('zh') ? 'zh' : 'en'
+    // Load if no content or language changed
+    if (!variablesRefContent || variablesRefLang !== currentLang) {
       setVariablesRefLoading(true)
       try {
-        const data = await getVariablesReference()
+        const data = await getVariablesReference(currentLang)
         setVariablesRefContent(data.content)
+        setVariablesRefLang(currentLang)
       } catch (err) {
         console.error(err)
-        toast.error('Failed to load variables reference')
+        toast.error(t('prompt.loadVariablesFailed', 'Failed to load variables reference'))
       } finally {
         setVariablesRefLoading(false)
       }
@@ -399,13 +411,13 @@ export default function PromptManager() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <CardTitle className="text-base">Prompt Template Editor</CardTitle>
+                  <CardTitle className="text-base">{t('prompt.templateEditor', 'Prompt Template Editor')}</CardTitle>
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={handleOpenVariablesRef}
                   >
-                    📖 Variables Guide
+                    📖 {t('prompt.variablesGuide', 'Variables Guide')}
                   </Button>
                 </div>
                 <div className="flex gap-2">
@@ -414,7 +426,7 @@ export default function PromptManager() {
                     variant="outline"
                     onClick={() => setNewTemplateDialogOpen(true)}
                   >
-                    ➕ New
+                    ➕ {t('prompt.new', 'New')}
                   </Button>
                   <Button
                     size="sm"
@@ -422,7 +434,7 @@ export default function PromptManager() {
                     onClick={() => setCopyDialogOpen(true)}
                     disabled={!selectedTemplate}
                   >
-                    📋 Copy
+                    📋 {t('prompt.copy', 'Copy')}
                   </Button>
                   {selectedTemplate && selectedTemplate.isSystem !== 'true' && (
                     <Button
@@ -431,7 +443,7 @@ export default function PromptManager() {
                       onClick={handleDeleteTemplate}
                       className="text-destructive"
                     >
-                      🗑️ Delete
+                      🗑️ {t('common.delete', 'Delete')}
                     </Button>
                   )}
                 </div>
@@ -440,14 +452,14 @@ export default function PromptManager() {
             <CardContent className="flex flex-col gap-4 h-[100%] flex-1 overflow-hidden">
               {/* Template Selection Dropdown */}
               <div>
-                <label className="text-xs uppercase text-muted-foreground">Template</label>
+                <label className="text-xs uppercase text-muted-foreground">{t('prompt.template', 'Template')}</label>
                 <Select
                   value={selectedId ? String(selectedId) : ''}
                   onValueChange={handleSelectTemplate}
                   disabled={loading}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={loading ? 'Loading...' : 'Select a template'} />
+                    <SelectValue placeholder={loading ? t('common.loading', 'Loading...') : t('prompt.selectTemplate', 'Select a template')} />
                   </SelectTrigger>
                   <SelectContent>
                     {templates.map((tpl) => (
@@ -456,7 +468,7 @@ export default function PromptManager() {
                           <span className="font-semibold">
                             {tpl.name}
                             {tpl.isSystem === 'true' && (
-                              <span className="ml-2 text-xs text-muted-foreground">[System]</span>
+                              <span className="ml-2 text-xs text-muted-foreground">[{t('prompt.system', 'System')}]</span>
                             )}
                           </span>
                           <span className="text-xs text-muted-foreground">{tpl.key}</span>
@@ -469,29 +481,29 @@ export default function PromptManager() {
 
               {/* Name Input */}
               <div>
-                <label className="text-xs uppercase text-muted-foreground">Template Name</label>
+                <label className="text-xs uppercase text-muted-foreground">{t('prompt.templateName', 'Template Name')}</label>
                 <Input
                   value={nameDraft}
                   onChange={(event) => setNameDraft(event.target.value)}
-                  placeholder="Template name"
+                  placeholder={t('prompt.templateNamePlaceholder', 'Template name')}
                   disabled={!selectedTemplate || saving}
                 />
               </div>
 
               {/* Description Input */}
               <div>
-                <label className="text-xs uppercase text-muted-foreground">Description</label>
+                <label className="text-xs uppercase text-muted-foreground">{t('common.description', 'Description')}</label>
                 <Input
                   value={descriptionDraft}
                   onChange={(event) => setDescriptionDraft(event.target.value)}
-                  placeholder="Prompt description"
+                  placeholder={t('prompt.descriptionPlaceholder', 'Prompt description')}
                   disabled={!selectedTemplate || saving}
                 />
               </div>
 
               {/* Template Text Area */}
               <div className="flex-1 flex flex-col overflow-hidden">
-                <label className="text-xs uppercase text-muted-foreground mb-2">Template Text</label>
+                <label className="text-xs uppercase text-muted-foreground mb-2">{t('prompt.templateText', 'Template Text')}</label>
                 <textarea
                   className="flex-1 w-full rounded-md border bg-background p-3 font-mono text-sm leading-relaxed focus:outline-none focus:ring-1 focus:ring-ring"
                   value={templateDraft}
@@ -508,19 +520,19 @@ export default function PromptManager() {
                     disabled={!selectedTemplate || saving}
                     className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 shadow-lg hover:shadow-xl transition-all"
                   >
-                    ✨ AI Write Strategy Prompt
+                    ✨ {t('prompt.aiWritePrompt', 'AI Write Strategy Prompt')}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => setPreviewDialogOpen(true)}
                     disabled={!selectedTemplate || saving}
                   >
-                    💡 Preview Filled
+                    💡 {t('prompt.previewFilled', 'Preview Filled')}
                   </Button>
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={handleSaveTemplate} disabled={!selectedTemplate || saving}>
-                    Save Template
+                    {t('prompt.saveTemplate', 'Save Template')}
                   </Button>
                 </div>
               </div>
@@ -531,7 +543,7 @@ export default function PromptManager() {
         {/* RIGHT COLUMN - Binding Management */}
         <Card className="flex flex-col w-full lg:w-[40rem] flex-shrink-0 overflow-hidden">
           <CardHeader>
-            <CardTitle className="text-base">Account Prompt Bindings</CardTitle>
+            <CardTitle className="text-base">{t('prompt.accountBindings', 'Account Prompt Bindings')}</CardTitle>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col gap-6">
             {/* Bindings Table */}
@@ -539,10 +551,10 @@ export default function PromptManager() {
               <table className="min-w-full text-sm">
                 <thead className="text-left text-muted-foreground">
                   <tr>
-                    <th className="py-2 pr-4">Account</th>
-                    <th className="py-2 pr-4">Model</th>
-                    <th className="py-2 pr-4">Template</th>
-                    <th className="py-2 pr-4 text-right">Actions</th>
+                    <th className="py-2 pr-4">{t('prompt.account', 'Account')}</th>
+                    <th className="py-2 pr-4">{t('prompt.model', 'Model')}</th>
+                    <th className="py-2 pr-4">{t('prompt.template', 'Template')}</th>
+                    <th className="py-2 pr-4 text-right">{t('common.actions', 'Actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -559,7 +571,7 @@ export default function PromptManager() {
                           size="sm"
                           onClick={() => handleEditBinding(binding)}
                         >
-                          Edit
+                          {t('common.edit', 'Edit')}
                         </Button>
                         <Button
                           variant="ghost"
@@ -567,7 +579,7 @@ export default function PromptManager() {
                           className="text-destructive"
                           onClick={() => handleDeleteBinding(binding.id)}
                         >
-                          Delete
+                          {t('common.delete', 'Delete')}
                         </Button>
                       </td>
                     </tr>
@@ -575,7 +587,7 @@ export default function PromptManager() {
                   {bindings.length === 0 && (
                     <tr>
                       <td colSpan={4} className="py-4 text-center text-muted-foreground">
-                        No prompt bindings configured.
+                        {t('prompt.noBindings', 'No prompt bindings configured.')}
                       </td>
                     </tr>
                   )}
@@ -588,7 +600,7 @@ export default function PromptManager() {
               <div className="grid grid-cols-1 gap-3">
                 <div>
                   <label className="text-xs uppercase text-muted-foreground">
-                    AI Trader
+                    {t('prompt.aiTrader', 'AI Trader')}
                   </label>
                   <Select
                     value={
@@ -603,7 +615,7 @@ export default function PromptManager() {
                     disabled={accountsLoading}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={accountsLoading ? 'Loading...' : 'Select'} />
+                      <SelectValue placeholder={accountsLoading ? t('common.loading', 'Loading...') : t('common.select', 'Select')} />
                     </SelectTrigger>
                     <SelectContent>
                       {accountOptions.map((account) => (
@@ -616,7 +628,7 @@ export default function PromptManager() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs uppercase text-muted-foreground">Template</label>
+                  <label className="text-xs uppercase text-muted-foreground">{t('prompt.template', 'Template')}</label>
                   <Select
                     value={
                       bindingForm.promptTemplateId !== undefined
@@ -631,7 +643,7 @@ export default function PromptManager() {
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select" />
+                      <SelectValue placeholder={t('common.select', 'Select')} />
                     </SelectTrigger>
                     <SelectContent>
                       {templates.map((tpl) => (
@@ -650,10 +662,10 @@ export default function PromptManager() {
                   onClick={() => setBindingForm(DEFAULT_BINDING_FORM)}
                   disabled={bindingSaving}
                 >
-                  Reset
+                  {t('common.reset', 'Reset')}
                 </Button>
                 <Button onClick={handleBindingSubmit} disabled={bindingSaving}>
-                  Save Binding
+                  {t('prompt.saveBinding', 'Save Binding')}
                 </Button>
               </div>
             </div>
@@ -677,36 +689,35 @@ export default function PromptManager() {
       <Dialog open={newTemplateDialogOpen} onOpenChange={setNewTemplateDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create New Template</DialogTitle>
+            <DialogTitle>{t('prompt.createNewTemplate', 'Create New Template')}</DialogTitle>
             <DialogDescription>
-              Create a new prompt template from scratch. It will be initialized with the default
-              template content.
+              {t('prompt.createNewTemplateDesc', 'Create a new prompt template from scratch. It will be initialized with the default template content.')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium">Template Name</label>
+              <label className="text-sm font-medium">{t('prompt.templateName', 'Template Name')}</label>
               <Input
                 value={newTemplateName}
                 onChange={(e) => setNewTemplateName(e.target.value)}
-                placeholder="My Custom Template"
+                placeholder={t('prompt.myCustomTemplate', 'My Custom Template')}
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Description (Optional)</label>
+              <label className="text-sm font-medium">{t('prompt.descriptionOptional', 'Description (Optional)')}</label>
               <Input
                 value={newTemplateDescription}
                 onChange={(e) => setNewTemplateDescription(e.target.value)}
-                placeholder="Description of this template"
+                placeholder={t('prompt.templateDescPlaceholder', 'Description of this template')}
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setNewTemplateDialogOpen(false)}>
-              Cancel
+              {t('common.cancel', 'Cancel')}
             </Button>
             <Button onClick={handleCreateTemplate} disabled={creating}>
-              Create
+              {t('common.create', 'Create')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -716,15 +727,14 @@ export default function PromptManager() {
       <Dialog open={copyDialogOpen} onOpenChange={setCopyDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Copy Template</DialogTitle>
+            <DialogTitle>{t('prompt.copyTemplate', 'Copy Template')}</DialogTitle>
             <DialogDescription>
-              Create a copy of "{selectedTemplate?.name}". You can specify a new name or leave
-              blank to auto-generate.
+              {t('prompt.copyTemplateDesc', 'Create a copy of "{name}". You can specify a new name or leave blank to auto-generate.').replace('{name}', selectedTemplate?.name || '')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium">New Name (Optional)</label>
+              <label className="text-sm font-medium">{t('prompt.newNameOptional', 'New Name (Optional)')}</label>
               <Input
                 value={copyName}
                 onChange={(e) => setCopyName(e.target.value)}
@@ -734,10 +744,10 @@ export default function PromptManager() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCopyDialogOpen(false)}>
-              Cancel
+              {t('common.cancel', 'Cancel')}
             </Button>
             <Button onClick={handleCopyTemplate} disabled={copying}>
-              Copy
+              {t('prompt.copy', 'Copy')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -767,9 +777,9 @@ export default function PromptManager() {
       <Dialog open={variablesRefModalOpen} onOpenChange={setVariablesRefModalOpen}>
         <DialogContent className="max-w-5xl max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>Strategy Variables Reference</DialogTitle>
+            <DialogTitle>{t('prompt.variablesReference', 'Strategy Variables Reference')}</DialogTitle>
             <DialogDescription>
-              All available variables for prompt templates
+              {t('prompt.variablesReferenceDesc', 'All available variables for prompt templates')}
             </DialogDescription>
           </DialogHeader>
 
@@ -779,18 +789,18 @@ export default function PromptManager() {
               <div className="bg-gradient-to-b from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border border-purple-200 dark:border-purple-800 rounded-lg p-4 h-full flex flex-col">
                 <div className="text-2xl mb-3">✨</div>
                 <p className="text-sm font-medium text-foreground mb-3">
-                  Need help writing prompts?
+                  {t('prompt.needHelpWriting', 'Need help writing prompts?')}
                 </p>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Try <span className="font-semibold text-purple-600 dark:text-purple-400">AI Prompt Generation</span> to create professional trading strategies.
+                  {t('prompt.tryAiPromptGeneration', 'Try')} <span className="font-semibold text-purple-600 dark:text-purple-400">{t('prompt.aiPromptGeneration', 'AI Prompt Generation')}</span> {t('prompt.toCreateStrategies', 'to create professional trading strategies.')}
                 </p>
                 <div className="text-xs text-muted-foreground space-y-1 mb-4">
-                  <p className="font-medium">AI will help you:</p>
+                  <p className="font-medium">{t('prompt.aiWillHelp', 'AI will help you:')}</p>
                   <ul className="list-disc list-inside space-y-0.5 text-[11px]">
-                    <li>Generate optimized prompts</li>
-                    <li>Select appropriate variables</li>
-                    <li>Add risk management</li>
-                    <li>Refine via conversation</li>
+                    <li>{t('prompt.generateOptimized', 'Generate optimized prompts')}</li>
+                    <li>{t('prompt.selectVariables', 'Select appropriate variables')}</li>
+                    <li>{t('prompt.addRiskManagement', 'Add risk management')}</li>
+                    <li>{t('prompt.refineViaConversation', 'Refine via conversation')}</li>
                   </ul>
                 </div>
                 <Button
@@ -801,10 +811,10 @@ export default function PromptManager() {
                   }}
                   className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 shadow-md hover:shadow-lg transition-all text-xs"
                 >
-                  ✨ Try AI Write
+                  ✨ {t('prompt.tryAiWrite', 'Try AI Write')}
                 </Button>
                 <p className="text-[10px] text-muted-foreground mt-2 text-center">
-                  Premium feature
+                  {t('prompt.premiumFeature', 'Premium feature')}
                 </p>
               </div>
             </div>
@@ -813,7 +823,7 @@ export default function PromptManager() {
             <ScrollArea className="flex-1 pr-4">
             {variablesRefLoading ? (
               <div className="flex items-center justify-center py-8">
-                <span className="text-muted-foreground">Loading...</span>
+                <span className="text-muted-foreground">{t('common.loading', 'Loading...')}</span>
               </div>
             ) : (
               <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-primary prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-muted prose-hr:border-border">
@@ -858,7 +868,7 @@ export default function PromptManager() {
           </div>
           <DialogFooter>
             <Button onClick={() => setVariablesRefModalOpen(false)}>
-              Close
+              {t('common.close', 'Close')}
             </Button>
           </DialogFooter>
         </DialogContent>

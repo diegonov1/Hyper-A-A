@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Button } from '../ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
@@ -89,6 +90,7 @@ export default function AIAnalysisPanel({
   selectedFlowIndicators = [],
   onAnalysisComplete
 }: AIAnalysisPanelProps) {
+  const { t } = useTranslation()
   const [selectedTrader, setSelectedTrader] = useState<string>('')
   const [userMessage, setUserMessage] = useState<string>('')
   const [traders, setTraders] = useState<AITrader[]>([])
@@ -391,19 +393,19 @@ export default function AIAnalysisPanel({
     <div className="space-y-3">
       {/* AI Trader Selection */}
       <div>
-        <label className="text-xs text-muted-foreground mb-1 block">AI Trader</label>
+        <label className="text-xs text-muted-foreground mb-1 block">{t('kline.analysis.aiTrader', 'AI Trader')}</label>
         <Select
           value={selectedTrader}
           onValueChange={setSelectedTrader}
           onOpenChange={(open) => open && fetchTraders()}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Select AI Trader" />
+            <SelectValue placeholder={t('kline.analysis.selectAiTrader', 'Select AI Trader')} />
           </SelectTrigger>
           <SelectContent>
             {tradersLoading && traders.length === 0 && (
               <SelectItem value="loading" disabled>
-                Loading AI Traders...
+                {t('kline.analysis.loadingTraders', 'Loading AI Traders...')}
               </SelectItem>
             )}
             {traders.map(trader => (
@@ -413,7 +415,7 @@ export default function AIAnalysisPanel({
             ))}
             {!tradersLoading && traders.length === 0 && (
               <SelectItem value="empty" disabled>
-                No AI Traders found
+                {t('kline.analysis.noTraders', 'No AI Traders found')}
               </SelectItem>
             )}
           </SelectContent>
@@ -422,25 +424,25 @@ export default function AIAnalysisPanel({
 
       {/* K-line data length */}
       <div>
-        <label className="text-xs text-muted-foreground mb-1 block">K-line Data Length</label>
+        <label className="text-xs text-muted-foreground mb-1 block">{t('kline.analysis.klineLength', 'K-line Data Length')}</label>
         <Select value={klineLimit.toString()} onValueChange={(v) => setKlineLimit(parseInt(v))}>
           <SelectTrigger>
-            <SelectValue placeholder="Select length" />
+            <SelectValue placeholder={t('kline.analysis.selectLength', 'Select length')} />
           </SelectTrigger>
           <SelectContent>
             {[50, 100, 200, 500].map(len => (
               <SelectItem key={len} value={len.toString()}>
-                Last {len} candles
+                {t('kline.analysis.lastCandles', 'Last {{count}} candles').replace('{{count}}', len.toString())}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <p className="text-[11px] text-muted-foreground mt-1">More candles give AI more context (500 may be slower).</p>
+        <p className="text-[11px] text-muted-foreground mt-1">{t('kline.analysis.candlesHint', 'More candles give AI more context (500 may be slower).')}</p>
       </div>
 
       {/* Selected Indicators hint */}
       <div className="space-y-1">
-        <div className="text-xs text-muted-foreground">Indicators Included</div>
+        <div className="text-xs text-muted-foreground">{t('kline.analysis.indicatorsIncluded', 'Indicators Included')}</div>
         {selectedIndicators.length > 0 ? (
           <div className="flex flex-wrap gap-1">
             {selectedIndicators.map((ind) => (
@@ -451,14 +453,14 @@ export default function AIAnalysisPanel({
           </div>
         ) : (
           <p className="text-[11px] text-muted-foreground">
-            Select indicators in "Technical Indicators" to include them in AI analysis.
+            {t('kline.analysis.selectIndicatorsHint', 'Select indicators in "Technical Indicators" to include them in AI analysis.')}
           </p>
         )}
       </div>
 
       {/* Selected Market Flow Indicators hint */}
       <div className="space-y-1">
-        <div className="text-xs text-muted-foreground">Market Flow Included</div>
+        <div className="text-xs text-muted-foreground">{t('kline.analysis.flowIncluded', 'Market Flow Included')}</div>
         {selectedFlowIndicators.length > 0 ? (
           <div className="flex flex-wrap gap-1">
             {selectedFlowIndicators.map((key) => (
@@ -469,14 +471,14 @@ export default function AIAnalysisPanel({
           </div>
         ) : (
           <p className="text-[11px] text-muted-foreground">
-            Select indicators in "Market Flow" to include them in AI analysis.
+            {t('kline.analysis.selectFlowHint', 'Select indicators in "Market Flow" to include them in AI analysis.')}
           </p>
         )}
       </div>
 
       {/* Wallet & Positions */}
       <div className="space-y-2">
-        <label className="text-xs text-muted-foreground block">Trading Wallet (for positions context)</label>
+        <label className="text-xs text-muted-foreground block">{t('kline.analysis.tradingWallet', 'Trading Wallet (for positions context)')}</label>
         <WalletSelector
           selectedWalletId={selectedWallet?.wallet_id || null}
           onSelect={(w) => setSelectedWallet(w)}
@@ -485,7 +487,7 @@ export default function AIAnalysisPanel({
         {selectedWallet && (
           <div className="rounded-md border p-3 space-y-2 bg-muted/40">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Wallet</span>
+              <span className="text-muted-foreground">{t('kline.analysis.wallet', 'Wallet')}</span>
               <span className="font-medium">{selectedWallet.account_name} ({selectedWallet.environment})</span>
             </div>
             <div className="space-y-1 max-h-40 overflow-y-auto">
@@ -501,11 +503,11 @@ export default function AIAnalysisPanel({
                       </g>
                     </g>
                   </svg>
-                  Loading positions...
+                  {t('kline.analysis.loadingPositions', 'Loading positions...')}
                 </div>
               )}
               {!positionsLoading && positions.length === 0 && (
-                <div className="text-xs text-muted-foreground">No open positions</div>
+                <div className="text-xs text-muted-foreground">{t('kline.analysis.noPositions', 'No open positions')}</div>
               )}
               {!positionsLoading && positions.length > 0 && positions.map((p, idx) => {
                 const fallbackSymbol = symbol || 'N/A'
@@ -540,9 +542,9 @@ export default function AIAnalysisPanel({
 
       {/* Custom Question */}
       <div>
-        <label className="text-xs text-muted-foreground mb-1 block">Custom Question (Optional)</label>
+        <label className="text-xs text-muted-foreground mb-1 block">{t('kline.analysis.customQuestion', 'Custom Question (Optional)')}</label>
         <Textarea
-          placeholder="e.g., Should I go long now? Where are the support levels?"
+          placeholder={t('kline.analysis.questionPlaceholder', 'e.g., Should I go long now? Where are the support levels?')}
           value={userMessage}
           onChange={(e) => setUserMessage(e.target.value)}
           rows={3}
@@ -560,10 +562,10 @@ export default function AIAnalysisPanel({
         {loading ? (
           <div className="flex items-center gap-2">
             <PacmanLoader className="w-4 h-4" />
-            Analyzing...
+            {t('kline.analysis.analyzing', 'Analyzing...')}
           </div>
         ) : (
-          'AI Analysis'
+          t('kline.analysis.aiAnalysis', 'AI Analysis')
         )}
       </Button>
 
@@ -573,7 +575,7 @@ export default function AIAnalysisPanel({
           <CardHeader className="py-2">
             <CardTitle className="text-sm flex items-center justify-between">
               <span>
-                {result.success ? 'Analysis Result' : 'Analysis Failed'}
+                {result.success ? t('kline.analysis.analysisResult', 'Analysis Result') : t('kline.analysis.analysisFailed', 'Analysis Failed')}
                 {result.trader_name && ` - ${result.trader_name}`}
               </span>
             </CardTitle>
@@ -593,13 +595,13 @@ export default function AIAnalysisPanel({
                     onClick={() => setShowFullAnalysis(true)}
                     className="text-xs"
                   >
-                    View Full Analysis
+                    {t('kline.analysis.viewFull', 'View Full Analysis')}
                   </Button>
                 </div>
               </>
             ) : (
               <p className="text-sm text-red-600">
-                {result.error || 'Analysis failed'}
+                {result.error || t('kline.analysis.analysisFailed', 'Analysis failed')}
               </p>
             )}
           </CardContent>
@@ -614,7 +616,7 @@ export default function AIAnalysisPanel({
         >
           <DialogHeader>
             <DialogTitle>
-              {symbol} {period} AI Analysis Report
+              {symbol} {period} {t('kline.analysis.reportTitle', 'AI Analysis Report')}
               {result?.trader_name && ` - ${result.trader_name}`}
             </DialogTitle>
           </DialogHeader>
@@ -629,14 +631,14 @@ export default function AIAnalysisPanel({
             {result?.prompt && (
               <div className="rounded-md border bg-muted/50 p-3">
                 <div className="flex items-center justify-between">
-                  <div className="text-xs font-semibold text-muted-foreground">User Prompt</div>
+                  <div className="text-xs font-semibold text-muted-foreground">{t('kline.analysis.userPrompt', 'User Prompt')}</div>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="text-xs"
                     onClick={() => setShowPrompt(!showPrompt)}
                   >
-                    {showPrompt ? 'Hide' : 'Show'} Prompt
+                    {showPrompt ? t('kline.analysis.hidePrompt', 'Hide') : t('kline.analysis.showPrompt', 'Show')} {t('kline.analysis.prompt', 'Prompt')}
                   </Button>
                 </div>
                 {showPrompt && (

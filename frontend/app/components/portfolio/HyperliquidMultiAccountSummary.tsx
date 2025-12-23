@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -58,11 +59,11 @@ interface HyperliquidMultiAccountSummaryProps {
   positions?: Position[]
 }
 
-const getMarginStatus = (percent: number) => {
+const getMarginStatus = (percent: number, t: (key: string, fallback?: string) => string) => {
   if (percent < 50) {
     return {
       color: 'bg-green-500',
-      text: 'Healthy',
+      text: t('account.marginHealthy', 'Healthy'),
       icon: TrendingUp,
       textColor: 'text-green-600',
       dotColor: 'bg-green-500',
@@ -71,7 +72,7 @@ const getMarginStatus = (percent: number) => {
   if (percent < 75) {
     return {
       color: 'bg-yellow-500',
-      text: 'Moderate',
+      text: t('account.marginModerate', 'Moderate'),
       icon: AlertTriangle,
       textColor: 'text-yellow-600',
       dotColor: 'bg-yellow-500',
@@ -79,7 +80,7 @@ const getMarginStatus = (percent: number) => {
   }
   return {
     color: 'bg-red-500',
-    text: 'High Risk',
+    text: t('account.marginHighRisk', 'High Risk'),
     icon: AlertTriangle,
     textColor: 'text-red-600',
     dotColor: 'bg-red-500',
@@ -92,6 +93,7 @@ export default function HyperliquidMultiAccountSummary({
   selectedAccount = 'all',
   positions = [],
 }: HyperliquidMultiAccountSummaryProps) {
+  const { t } = useTranslation()
   const { tradingMode } = useTradingMode()
   const [accountBalances, setAccountBalances] = useState<AccountBalance[]>([])
   const [globalLastUpdate, setGlobalLastUpdate] = useState<string | null>(null)
@@ -264,7 +266,7 @@ export default function HyperliquidMultiAccountSummary({
     return (
       <Card className="p-6">
         <div className="text-sm text-muted-foreground">
-          No Hyperliquid accounts configured
+          {t('account.noAccountsConfigured', 'No Hyperliquid accounts configured')}
         </div>
       </Card>
     )
@@ -293,7 +295,7 @@ export default function HyperliquidMultiAccountSummary({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Hyperliquid Account Status</h2>
+        <h2 className="text-lg font-semibold">{t('account.accountStatus', 'Hyperliquid Account Status')}</h2>
         <Badge
           variant={environment === 'testnet' ? 'default' : 'destructive'}
           className="uppercase text-xs"
@@ -304,13 +306,13 @@ export default function HyperliquidMultiAccountSummary({
 
       {globalLastUpdate && (
         <div className="text-xs text-muted-foreground -mt-2">
-          Last update: {globalLastUpdate}
+          {t('common.lastUpdate', 'Last update')}: {globalLastUpdate}
         </div>
       )}
 
       {/* Loading state - only show when no data yet */}
       {isLoading && accountBalances.every(a => !a.balance) && (
-        <div className="text-sm text-muted-foreground">Loading account data...</div>
+        <div className="text-sm text-muted-foreground">{t('account.loadingData', 'Loading account data...')}</div>
       )}
 
       {/* Account cards grid */}
@@ -318,7 +320,7 @@ export default function HyperliquidMultiAccountSummary({
         {accountBalances.map((account) => {
           const logo = getModelLogo(account.accountName)
           const marginStatus = account.balance
-            ? getMarginStatus(account.balance.marginUsagePercent)
+            ? getMarginStatus(account.balance.marginUsagePercent, t)
             : null
           const accountPositions = getAccountPositions(account.accountId)
 
@@ -349,7 +351,7 @@ export default function HyperliquidMultiAccountSummary({
                     onClick={() => handleViewDetails(account)}
                   >
                     <Eye className="w-3 h-3 mr-1" />
-                    Details
+                    {t('common.details', 'Details')}
                   </Button>
                 )}
               </div>
@@ -364,7 +366,7 @@ export default function HyperliquidMultiAccountSummary({
                 <div className="grid grid-cols-2 gap-3">
                   {/* Equity */}
                   <div>
-                    <div className="text-[10px] text-muted-foreground">Equity</div>
+                    <div className="text-[10px] text-muted-foreground">{t('account.equity', 'Equity')}</div>
                     <div className="text-sm font-bold">
                       ${account.balance.totalEquity.toLocaleString('en-US', {
                         minimumFractionDigits: 0,
@@ -375,7 +377,7 @@ export default function HyperliquidMultiAccountSummary({
 
                   {/* Margin */}
                   <div>
-                    <div className="text-[10px] text-muted-foreground">Margin</div>
+                    <div className="text-[10px] text-muted-foreground">{t('account.margin', 'Margin')}</div>
                     <div className={`text-sm font-medium ${marginStatus?.textColor || ''}`}>
                       {account.balance.marginUsagePercent.toFixed(1)}%
                     </div>
@@ -387,7 +389,7 @@ export default function HyperliquidMultiAccountSummary({
                     {account.rateLimit ? (
                       <div className={`text-sm font-medium ${getApiUsageColor(account.rateLimit.usagePercent)}`}>
                         {(100 - account.rateLimit.usagePercent).toFixed(0)}%
-                        <span className="text-[10px] text-muted-foreground ml-1">left</span>
+                        <span className="text-[10px] text-muted-foreground ml-1">{t('account.left', 'left')}</span>
                       </div>
                     ) : (
                       <div className="text-sm text-muted-foreground">--</div>
@@ -396,7 +398,7 @@ export default function HyperliquidMultiAccountSummary({
 
                   {/* Win Rate */}
                   <div>
-                    <div className="text-[10px] text-muted-foreground">Win Rate</div>
+                    <div className="text-[10px] text-muted-foreground">{t('account.winRate', 'Win Rate')}</div>
                     {account.tradingStats && account.tradingStats.total_trades > 0 ? (
                       <div className="text-sm font-medium">
                         {account.tradingStats.win_rate.toFixed(0)}%
@@ -414,7 +416,7 @@ export default function HyperliquidMultiAccountSummary({
               {/* Positions section - always show */}
               <div className="pt-2 border-t border-border">
                 <div className="text-[10px] text-muted-foreground mb-1">
-                  Positions {accountPositions.length > 0 && `(${accountPositions.length})`}
+                  {t('account.positions', 'Positions')} {accountPositions.length > 0 && `(${accountPositions.length})`}
                 </div>
                 {accountPositions.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
@@ -447,12 +449,12 @@ export default function HyperliquidMultiAccountSummary({
                     })}
                     {accountPositions.length > 4 && (
                       <div className="text-[10px] text-muted-foreground self-center">
-                        +{accountPositions.length - 4} more
+                        +{accountPositions.length - 4} {t('common.more', 'more')}
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="text-[10px] text-muted-foreground">No open positions</div>
+                  <div className="text-[10px] text-muted-foreground">{t('account.noOpenPositions', 'No open positions')}</div>
                 )}
               </div>
             </Card>

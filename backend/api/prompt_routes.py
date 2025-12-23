@@ -601,18 +601,26 @@ def get_conversation_messages_api(
 
 
 @router.get("/variables-reference")
-def get_variables_reference() -> dict:
+def get_variables_reference(lang: str = "en") -> dict:
     """
     Get the prompt variables reference document (Markdown format).
     Used by frontend to display the strategy parameter guide.
+
+    Args:
+        lang: Language code ("en" for English, "zh" for Chinese)
     """
     import os
 
-    # Path to the reference document
+    # Select document based on language
+    if lang == "zh":
+        filename = "PROMPT_VARIABLES_REFERENCE_ZH.md"
+    else:
+        filename = "PROMPT_VARIABLES_REFERENCE.md"
+
     doc_path = os.path.join(
         os.path.dirname(os.path.dirname(__file__)),
         "config",
-        "PROMPT_VARIABLES_REFERENCE.md"
+        filename
     )
 
     try:

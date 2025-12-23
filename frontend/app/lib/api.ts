@@ -334,8 +334,8 @@ export interface VariablesReferenceResponse {
   content: string
 }
 
-export async function getVariablesReference(): Promise<VariablesReferenceResponse> {
-  const response = await apiRequest('/prompts/variables-reference')
+export async function getVariablesReference(lang: string = 'en'): Promise<VariablesReferenceResponse> {
+  const response = await apiRequest(`/prompts/variables-reference?lang=${lang}`)
   return response.json()
 }
 

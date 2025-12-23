@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'react-hot-toast'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -204,6 +205,7 @@ function FormulaReference() {
 }
 
 export default function MarketRegimeConfig() {
+  const { t } = useTranslation()
   const [config, setConfig] = useState<RegimeConfig | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -242,11 +244,11 @@ export default function MarketRegimeConfig() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64">Loading configuration...</div>
+    return <div className="flex items-center justify-center h-64">{t('common.loading', 'Loading...')}</div>
   }
 
   if (!config) {
-    return <div className="text-center text-muted-foreground">No configuration found</div>
+    return <div className="text-center text-muted-foreground">{t('regime.noConfig', 'No configuration found')}</div>
   }
 
   return (
@@ -257,8 +259,8 @@ export default function MarketRegimeConfig() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Zap className="w-5 h-5 text-yellow-500" />
-              <span className="font-semibold text-yellow-600 dark:text-yellow-400">Signal Triggered</span>
-              <span className="text-xs text-muted-foreground">→ Regime Classification Flow</span>
+              <span className="font-semibold text-yellow-600 dark:text-yellow-400">{t('regime.signalTriggered', 'Signal Triggered')}</span>
+              <span className="text-xs text-muted-foreground">→ {t('regime.classificationFlow', 'Regime Classification Flow')}</span>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-help" />
@@ -269,14 +271,14 @@ export default function MarketRegimeConfig() {
               </Tooltip>
             </div>
             <Button size="sm" onClick={handleSave} disabled={saving}>
-              <Save className="w-4 h-4 mr-1" />{saving ? 'Saving...' : 'Save'}
+              <Save className="w-4 h-4 mr-1" />{saving ? t('common.saving', 'Saving...') : t('common.save', 'Save')}
             </Button>
           </div>
 
           {/* Decision Flow - Order matches backend classify_regime priority */}
           <div className="space-y-4">
             {/* 1. Stop Hunt */}
-            <DecisionNode title="1. Stop Hunt" color="border-red-500" desc="Liquidity grab" icon={<IconProhibit className="w-5 h-5 flex-shrink-0" />}>
+            <DecisionNode title={t('regime.stopHunt', '1. Stop Hunt (止损猎杀)')} color="border-red-500" desc={t('regime.liquidityGrab', 'Liquidity grab (流动性猎取)')} icon={<IconProhibit className="w-5 h-5 flex-shrink-0" />}>
               <All />
               <Param label="Price Range >" value={config.stop_hunt_range_atr} def={1.0} range="0.5~2" onChange={v => u('stop_hunt_range_atr', v)} />
               <And />
@@ -284,7 +286,7 @@ export default function MarketRegimeConfig() {
             </DecisionNode>
 
             {/* 2. Breakout */}
-            <DecisionNode title="2. Breakout" color="border-green-500" desc="Trend initiation" icon={<IconSignal5 className="w-5 h-5 flex-shrink-0" />}>
+            <DecisionNode title={t('regime.breakout', '2. Breakout (突破)')} color="border-green-500" desc={t('regime.trendInitiation', 'Trend initiation (趋势启动)')} icon={<IconSignal5 className="w-5 h-5 flex-shrink-0" />}>
               <All />
               <Param label="CVD Ratio >" value={config.breakout_cvd_z} def={1.5} range="1~3" onChange={v => u('breakout_cvd_z', v)} />
               <span className="text-muted-foreground text-xs">(×0.1)</span>
@@ -304,7 +306,7 @@ export default function MarketRegimeConfig() {
             </DecisionNode>
 
             {/* 3. Exhaustion */}
-            <DecisionNode title="3. Exhaustion" color="border-orange-500" desc="Trend weakening" icon={<IconSignal3 className="w-5 h-5 flex-shrink-0" />}>
+            <DecisionNode title={t('regime.exhaustion', '3. Exhaustion (衰竭)')} color="border-orange-500" desc={t('regime.trendWeakening', 'Trend weakening (趋势减弱)')} icon={<IconSignal3 className="w-5 h-5 flex-shrink-0" />}>
               <All />
               <span className="text-foreground">CVD strong</span>
               <And />
@@ -317,7 +319,7 @@ export default function MarketRegimeConfig() {
             </DecisionNode>
 
             {/* 4. Trap */}
-            <DecisionNode title="4. Trap" color="border-yellow-600" desc="False breakout" icon={<IconProhibit className="w-5 h-5 flex-shrink-0" />}>
+            <DecisionNode title={t('regime.trap', '4. Trap (陷阱)')} color="border-yellow-600" desc={t('regime.falseBreakout', 'False breakout (假突破)')} icon={<IconProhibit className="w-5 h-5 flex-shrink-0" />}>
               <All />
               <span className="text-foreground">CVD strong</span>
               <And />
@@ -326,7 +328,7 @@ export default function MarketRegimeConfig() {
             </DecisionNode>
 
             {/* 5. Absorption */}
-            <DecisionNode title="5. Absorption" color="border-purple-500" desc="Flow absorbed" icon={<IconSignal3 className="w-5 h-5 flex-shrink-0" />}>
+            <DecisionNode title={t('regime.absorption', '5. Absorption (吸收)')} color="border-purple-500" desc={t('regime.flowAbsorbed', 'Flow absorbed (流量被吸收)')} icon={<IconSignal3 className="w-5 h-5 flex-shrink-0" />}>
               <All />
               <span className="text-foreground">CVD strong</span>
               <And />
@@ -334,7 +336,7 @@ export default function MarketRegimeConfig() {
             </DecisionNode>
 
             {/* 6. Continuation */}
-            <DecisionNode title="6. Continuation" color="border-blue-500" desc="Trend continues" icon={<IconSignal4 className="w-5 h-5 flex-shrink-0" />}>
+            <DecisionNode title={t('regime.continuation', '6. Continuation (延续)')} color="border-blue-500" desc={t('regime.trendContinues', 'Trend continues (趋势延续)')} icon={<IconSignal4 className="w-5 h-5 flex-shrink-0" />}>
               <All />
               <span className="text-foreground">CVD weak</span>
               <span className="text-muted-foreground text-xs">(&gt;0.05)</span>
@@ -345,8 +347,8 @@ export default function MarketRegimeConfig() {
             </DecisionNode>
 
             {/* 7. Noise */}
-            <DecisionNode title="7. Noise" color="border-gray-400" desc="No clear pattern" isLast>
-              <span className="text-muted-foreground">None of the above matched</span>
+            <DecisionNode title={t('regime.noise', '7. Noise (噪音)')} color="border-gray-400" desc={t('regime.noClearPattern', 'No clear pattern (无明确模式)')} isLast>
+              <span className="text-muted-foreground">{t('regime.noneMatched', 'None of the above matched')}</span>
             </DecisionNode>
           </div>
         </div>
