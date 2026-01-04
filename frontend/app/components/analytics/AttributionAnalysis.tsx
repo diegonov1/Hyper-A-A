@@ -295,11 +295,12 @@ export default function AttributionAnalysis() {
       ) : (
         <>
           {/* Summary metrics will be added here */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <Card><CardHeader className="pb-2"><CardTitle className="text-sm">{t('attribution.grossPnl', 'Gross PnL')}</CardTitle></CardHeader><CardContent><div className={`text-2xl font-bold ${(summary?.overview.total_pnl || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>${summary?.overview.total_pnl?.toFixed(2) || '0.00'}</div></CardContent></Card>
+            <Card><CardHeader className="pb-2"><CardTitle className="text-sm">{t('attribution.totalFees', 'Total Fees')}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-orange-500">${summary?.overview.total_fee?.toFixed(2) || '0.00'}</div></CardContent></Card>
             <Card><CardHeader className="pb-2"><CardTitle className="text-sm">{t('attribution.netPnl', 'Net PnL')}</CardTitle></CardHeader><CardContent><div className={`text-2xl font-bold ${(summary?.overview.net_pnl || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>${summary?.overview.net_pnl?.toFixed(2) || '0.00'}</div></CardContent></Card>
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm">{t('attribution.tradeCount', 'Trades')}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{summary?.overview.trade_count || 0}</div></CardContent></Card>
             <Card><CardHeader className="pb-2"><CardTitle className="text-sm">{t('attribution.aiWinRate', 'AI Win Rate')}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{((summary?.overview.win_rate || 0) * 100).toFixed(1)}%</div></CardContent></Card>
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm">{t('attribution.profitFactor', 'Profit Factor')}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{summary?.overview.profit_factor?.toFixed(2) || 'N/A'}</div></CardContent></Card>
+            <Card><CardHeader className="pb-2"><CardTitle className="text-sm">{t('attribution.tradeCount', 'Trades')}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{summary?.overview.trade_count || 0}</div></CardContent></Card>
           </div>
 
           {/* Dimension analysis will be added here */}
@@ -307,40 +308,64 @@ export default function AttributionAnalysis() {
             {/* By Symbol */}
             <Card>
               <CardHeader><CardTitle>{t('attribution.bySymbol', 'By Symbol')}</CardTitle></CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {bySymbol?.items.map((item: DimensionItem & { symbol?: string }) => (
-                    <div key={item.symbol} className="flex justify-between items-center py-1 border-b last:border-0">
-                      <span className="font-medium">{item.symbol}</span>
-                      <span className={item.metrics.net_pnl >= 0 ? 'text-green-500' : 'text-red-500'}>
-                        ${item.metrics.net_pnl.toFixed(2)} ({item.metrics.trade_count})
-                      </span>
-                    </div>
-                  ))}
-                </div>
+              <CardContent className="p-0">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-muted-foreground">
+                      <th className="text-left p-2 font-medium">Symbol</th>
+                      <th className="text-right p-2 font-medium">Gross PnL</th>
+                      <th className="text-right p-2 font-medium">Fees</th>
+                      <th className="text-right p-2 font-medium">Net PnL</th>
+                      <th className="text-right p-2 font-medium">Trades</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bySymbol?.items.map((item: DimensionItem & { symbol?: string }) => (
+                      <tr key={item.symbol} className="border-b last:border-0">
+                        <td className="p-2 font-medium">{item.symbol}</td>
+                        <td className={`p-2 text-right ${item.metrics.total_pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>${item.metrics.total_pnl.toFixed(2)}</td>
+                        <td className="p-2 text-right text-orange-500">${item.metrics.total_fee.toFixed(2)}</td>
+                        <td className={`p-2 text-right ${item.metrics.net_pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>${item.metrics.net_pnl.toFixed(2)}</td>
+                        <td className="p-2 text-right">{item.metrics.trade_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </CardContent>
             </Card>
 
             {/* By Strategy */}
             <Card>
               <CardHeader><CardTitle>{t('attribution.byStrategy', 'By Strategy')}</CardTitle></CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 {byStrategy?.items.length === 0 ? (
-                  <div className="text-muted-foreground text-sm">{t('attribution.noStrategyData', 'No strategy attribution data')}</div>
+                  <div className="text-muted-foreground text-sm p-4">{t('attribution.noStrategyData', 'No strategy attribution data')}</div>
                 ) : (
-                  <div className="space-y-2">
-                    {byStrategy?.items.map((item: DimensionItem & { strategy_id?: number; strategy_name?: string }) => (
-                      <div key={item.strategy_id} className="flex justify-between items-center py-1 border-b last:border-0">
-                        <span className="font-medium">{item.strategy_name}</span>
-                        <span className={item.metrics.net_pnl >= 0 ? 'text-green-500' : 'text-red-500'}>
-                          ${item.metrics.net_pnl.toFixed(2)} ({item.metrics.trade_count})
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-muted-foreground">
+                        <th className="text-left p-2 font-medium">Strategy</th>
+                        <th className="text-right p-2 font-medium">Gross PnL</th>
+                        <th className="text-right p-2 font-medium">Fees</th>
+                        <th className="text-right p-2 font-medium">Net PnL</th>
+                        <th className="text-right p-2 font-medium">Trades</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {byStrategy?.items.map((item: DimensionItem & { strategy_id?: number; strategy_name?: string }) => (
+                        <tr key={item.strategy_id} className="border-b last:border-0">
+                          <td className="p-2 font-medium">{item.strategy_name}</td>
+                          <td className={`p-2 text-right ${item.metrics.total_pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>${item.metrics.total_pnl.toFixed(2)}</td>
+                          <td className="p-2 text-right text-orange-500">${item.metrics.total_fee.toFixed(2)}</td>
+                          <td className={`p-2 text-right ${item.metrics.net_pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>${item.metrics.net_pnl.toFixed(2)}</td>
+                          <td className="p-2 text-right">{item.metrics.trade_count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 )}
                 {byStrategy?.unattributed && byStrategy.unattributed.count > 0 && (
-                  <div className="mt-2 pt-2 border-t text-sm text-muted-foreground">
+                  <div className="p-2 border-t text-sm text-muted-foreground">
                     {t('attribution.unattributed', 'Unattributed')}: {byStrategy.unattributed.count} trades
                   </div>
                 )}
@@ -350,17 +375,29 @@ export default function AttributionAnalysis() {
             {/* By Trigger Type */}
             <Card>
               <CardHeader><CardTitle>{t('attribution.byTriggerType', 'By Trigger Type')}</CardTitle></CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {byTrigger?.items.map((item: DimensionItem & { trigger_type?: string }) => (
-                    <div key={item.trigger_type} className="flex justify-between items-center py-1 border-b last:border-0">
-                      <span className="font-medium capitalize">{item.trigger_type}</span>
-                      <span className={item.metrics.net_pnl >= 0 ? 'text-green-500' : 'text-red-500'}>
-                        ${item.metrics.net_pnl.toFixed(2)} ({item.metrics.trade_count})
-                      </span>
-                    </div>
-                  ))}
-                </div>
+              <CardContent className="p-0">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-muted-foreground">
+                      <th className="text-left p-2 font-medium">Trigger</th>
+                      <th className="text-right p-2 font-medium">Gross PnL</th>
+                      <th className="text-right p-2 font-medium">Fees</th>
+                      <th className="text-right p-2 font-medium">Net PnL</th>
+                      <th className="text-right p-2 font-medium">Trades</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {byTrigger?.items.map((item: DimensionItem & { trigger_type?: string }) => (
+                      <tr key={item.trigger_type} className="border-b last:border-0">
+                        <td className="p-2 font-medium capitalize">{item.trigger_type}</td>
+                        <td className={`p-2 text-right ${item.metrics.total_pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>${item.metrics.total_pnl.toFixed(2)}</td>
+                        <td className="p-2 text-right text-orange-500">${item.metrics.total_fee.toFixed(2)}</td>
+                        <td className={`p-2 text-right ${item.metrics.net_pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>${item.metrics.net_pnl.toFixed(2)}</td>
+                        <td className="p-2 text-right">{item.metrics.trade_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </CardContent>
             </Card>
 
@@ -381,17 +418,29 @@ export default function AttributionAnalysis() {
                   </TooltipProvider>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {byOperation?.items.map((item: DimensionItem & { operation?: string }) => (
-                    <div key={item.operation} className="flex justify-between items-center py-1 border-b last:border-0">
-                      <span className="font-medium uppercase">{item.operation}</span>
-                      <span className={item.metrics.net_pnl >= 0 ? 'text-green-500' : 'text-red-500'}>
-                        ${item.metrics.net_pnl.toFixed(2)} ({item.metrics.trade_count})
-                      </span>
-                    </div>
-                  ))}
-                </div>
+              <CardContent className="p-0">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-muted-foreground">
+                      <th className="text-left p-2 font-medium">Operation</th>
+                      <th className="text-right p-2 font-medium">Gross PnL</th>
+                      <th className="text-right p-2 font-medium">Fees</th>
+                      <th className="text-right p-2 font-medium">Net PnL</th>
+                      <th className="text-right p-2 font-medium">Trades</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {byOperation?.items.map((item: DimensionItem & { operation?: string }) => (
+                      <tr key={item.operation} className="border-b last:border-0">
+                        <td className="p-2 font-medium uppercase">{item.operation}</td>
+                        <td className={`p-2 text-right ${item.metrics.total_pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>${item.metrics.total_pnl.toFixed(2)}</td>
+                        <td className="p-2 text-right text-orange-500">${item.metrics.total_fee.toFixed(2)}</td>
+                        <td className={`p-2 text-right ${item.metrics.net_pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>${item.metrics.net_pnl.toFixed(2)}</td>
+                        <td className="p-2 text-right">{item.metrics.trade_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </CardContent>
             </Card>
           </div>

@@ -21,6 +21,8 @@ from database.models import (
     AiAttributionConversation, AiAttributionMessage,
     Account, AIDecisionLog, PromptTemplate, SignalPool
 )
+from database.snapshot_connection import SnapshotSessionLocal
+from database.snapshot_models import HyperliquidTrade
 from services.ai_decision_service import build_chat_completion_endpoints, _extract_text_from_message
 
 logger = logging.getLogger(__name__)
@@ -239,6 +241,56 @@ def _execute_tool(db: Session, tool_name: str, args: Dict) -> str:
         return json.dumps({"error": str(e)})
 
 
+def _get_fees_for_decisions(decisions: List[AIDecisionLog]) -> Dict[int, float]:
+    """Batch query HyperliquidTrade to get total fees for each decision."""
+    if not decisions:
+        return {}
+
+    # Collect all order IDs (main, tp, sl)
+    order_ids = set()
+    decision_orders: Dict[int, List[str]] = {}
+
+    for d in decisions:
+        orders = []
+        if d.hyperliquid_order_id:
+            order_ids.add(d.hyperliquid_order_id)
+            orders.append(d.hyperliquid_order_id)
+        if d.tp_order_id:
+            order_ids.add(d.tp_order_id)
+            orders.append(d.tp_order_id)
+        if d.sl_order_id:
+            order_ids.add(d.sl_order_id)
+            orders.append(d.sl_order_id)
+        decision_orders[d.id] = orders
+
+    if not order_ids:
+        return {d.id: 0.0 for d in decisions}
+
+    # Batch query fees from HyperliquidTrade
+    fee_map: Dict[str, float] = {}
+    try:
+        snapshot_db = SnapshotSessionLocal()
+        trades = snapshot_db.query(HyperliquidTrade).filter(
+            HyperliquidTrade.order_id.in_(list(order_ids))
+        ).all()
+        for t in trades:
+            if t.order_id:
+                fee_map[str(t.order_id)] = float(t.fee or 0)
+        snapshot_db.close()
+    except Exception as e:
+        logger.warning(f"Failed to fetch fees from HyperliquidTrade: {e}")
+
+    # Calculate total fee for each decision
+    result: Dict[int, float] = {}
+    for d in decisions:
+        total_fee = 0.0
+        for oid in decision_orders.get(d.id, []):
+            total_fee += fee_map.get(oid, 0.0)
+        result[d.id] = total_fee
+
+    return result
+
+
 def _tool_get_attribution_summary(db: Session, args: Dict) -> str:
     """Get trading performance summary"""
     account_id = args.get("account_id", 0)
@@ -269,20 +321,26 @@ def _tool_get_attribution_summary(db: Session, args: Dict) -> str:
     if not decisions:
         return json.dumps({"message": "No trading data found for the specified period"})
 
+    # Get fees for all decisions
+    fee_map = _get_fees_for_decisions(decisions)
+
     # Calculate metrics
     total_trades = len(decisions)
     wins = sum(1 for d in decisions if d.realized_pnl and float(d.realized_pnl) > 0)
     losses = sum(1 for d in decisions if d.realized_pnl and float(d.realized_pnl) < 0)
     total_pnl = sum(float(d.realized_pnl or 0) for d in decisions)
+    total_fees = sum(fee_map.get(d.id, 0.0) for d in decisions)
+    net_pnl = total_pnl - total_fees
 
     # By operation
     by_operation = {}
     for d in decisions:
         op = d.operation
         if op not in by_operation:
-            by_operation[op] = {"count": 0, "wins": 0, "pnl": 0}
+            by_operation[op] = {"count": 0, "wins": 0, "pnl": 0, "fees": 0}
         by_operation[op]["count"] += 1
         by_operation[op]["pnl"] += float(d.realized_pnl or 0)
+        by_operation[op]["fees"] += fee_map.get(d.id, 0.0)
         if d.realized_pnl and float(d.realized_pnl) > 0:
             by_operation[op]["wins"] += 1
 
@@ -291,9 +349,10 @@ def _tool_get_attribution_summary(db: Session, args: Dict) -> str:
     for d in decisions:
         sym = d.symbol or "UNKNOWN"
         if sym not in by_symbol:
-            by_symbol[sym] = {"count": 0, "wins": 0, "pnl": 0}
+            by_symbol[sym] = {"count": 0, "wins": 0, "pnl": 0, "fees": 0}
         by_symbol[sym]["count"] += 1
         by_symbol[sym]["pnl"] += float(d.realized_pnl or 0)
+        by_symbol[sym]["fees"] += fee_map.get(d.id, 0.0)
         if d.realized_pnl and float(d.realized_pnl) > 0:
             by_symbol[sym]["wins"] += 1
 
@@ -304,6 +363,8 @@ def _tool_get_attribution_summary(db: Session, args: Dict) -> str:
         "losses": losses,
         "win_rate": f"{(wins/total_trades*100):.1f}%" if total_trades > 0 else "N/A",
         "total_pnl": round(total_pnl, 2),
+        "total_fees": round(total_fees, 2),
+        "net_pnl": round(net_pnl, 2),
         "by_operation": by_operation,
         "by_symbol": by_symbol
     })
@@ -424,13 +485,20 @@ def _tool_get_trade_decision_chain(db: Session, args: Dict) -> str:
 
     decisions = query.order_by(AIDecisionLog.created_at.desc()).limit(limit).all()
 
+    # Get fees for all decisions
+    fee_map = _get_fees_for_decisions(decisions)
+
     trades = []
     for d in decisions:
+        pnl = float(d.realized_pnl) if d.realized_pnl else 0
+        fee = fee_map.get(d.id, 0.0)
         trades.append({
             "id": d.id,
             "symbol": d.symbol,
             "operation": d.operation,
-            "realized_pnl": float(d.realized_pnl) if d.realized_pnl else 0,
+            "realized_pnl": pnl,
+            "fee": round(fee, 2),
+            "net_pnl": round(pnl - fee, 2),
             "reason": (d.reason[:500] if d.reason else None),  # Truncate
             "created_at": d.created_at.isoformat() if d.created_at else None
         })

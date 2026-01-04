@@ -14,6 +14,8 @@ from sqlalchemy.orm import Session
 
 from database.connection import SessionLocal
 from database.models import AIDecisionLog, Account, PromptTemplate
+from database.snapshot_connection import SnapshotSessionLocal
+from database.snapshot_models import HyperliquidTrade
 import logging
 
 logger = logging.getLogger(__name__)
@@ -57,6 +59,59 @@ class TriggerTypeBreakdown(BaseModel):
 
 
 # ============== Helper Functions ==============
+
+def get_fees_for_decisions(decisions: List[AIDecisionLog]) -> Dict[int, float]:
+    """
+    Batch query HyperliquidTrade to get total fees for each decision.
+    Returns a dict mapping decision_id -> total_fee.
+    """
+    if not decisions:
+        return {}
+
+    # Collect all order IDs (main, tp, sl)
+    order_ids = set()
+    decision_orders: Dict[int, List[str]] = {}  # decision_id -> list of order_ids
+
+    for d in decisions:
+        orders = []
+        if d.hyperliquid_order_id:
+            order_ids.add(d.hyperliquid_order_id)
+            orders.append(d.hyperliquid_order_id)
+        if d.tp_order_id:
+            order_ids.add(d.tp_order_id)
+            orders.append(d.tp_order_id)
+        if d.sl_order_id:
+            order_ids.add(d.sl_order_id)
+            orders.append(d.sl_order_id)
+        decision_orders[d.id] = orders
+
+    if not order_ids:
+        return {d.id: 0.0 for d in decisions}
+
+    # Batch query fees from HyperliquidTrade
+    fee_map: Dict[str, float] = {}
+    try:
+        snapshot_db = SnapshotSessionLocal()
+        trades = snapshot_db.query(HyperliquidTrade).filter(
+            HyperliquidTrade.order_id.in_(list(order_ids))
+        ).all()
+        for t in trades:
+            if t.order_id:
+                fee_map[str(t.order_id)] = float(t.fee or 0)
+        snapshot_db.close()
+    except Exception as e:
+        logger.warning(f"Failed to fetch fees from HyperliquidTrade: {e}")
+
+    # Calculate total fee for each decision
+    result: Dict[int, float] = {}
+    for d in decisions:
+        total_fee = 0.0
+        for oid in decision_orders.get(d.id, []):
+            total_fee += fee_map.get(oid, 0.0)
+        result[d.id] = total_fee
+
+    return result
+
 
 def calculate_metrics(records: List[Dict]) -> Dict[str, Any]:
     """Calculate standard metrics from a list of decision records."""
@@ -162,6 +217,9 @@ def get_analytics_summary(
     query = build_base_query(db, start_date, end_date, environment, account_id)
     decisions = query.all()
 
+    # Get fees for all decisions
+    fee_map = get_fees_for_decisions(decisions)
+
     # Convert to records for metrics calculation
     records = []
     signal_records = []
@@ -174,7 +232,7 @@ def get_analytics_summary(
 
     for d in decisions:
         pnl = float(d.realized_pnl) if d.realized_pnl else 0
-        fee = 0  # Fee is in HyperliquidTrade, not AIDecisionLog
+        fee = fee_map.get(d.id, 0.0)
         record = {"pnl": pnl, "fee": fee}
         records.append(record)
 
@@ -236,6 +294,9 @@ def get_analytics_by_strategy(
     query = build_base_query(db, start_date, end_date, environment, account_id)
     decisions = query.all()
 
+    # Get fees for all decisions
+    fee_map = get_fees_for_decisions(decisions)
+
     # Group by strategy
     by_strategy: Dict[Optional[int], List[Dict]] = {}
     strategy_names: Dict[int, str] = {}
@@ -243,9 +304,10 @@ def get_analytics_by_strategy(
     for d in decisions:
         strategy_id = d.prompt_template_id
         pnl = float(d.realized_pnl) if d.realized_pnl else 0
+        fee = fee_map.get(d.id, 0.0)
         record = {
             "pnl": pnl,
-            "fee": 0,
+            "fee": fee,
             "trigger_type": get_trigger_type(d),
         }
 
@@ -273,8 +335,8 @@ def get_analytics_by_strategy(
             "strategy_name": strategy_names.get(strategy_id, f"Strategy {strategy_id}"),
             "metrics": calculate_metrics(records),
             "by_trigger_type": {
-                "signal": {"count": len(signal_records), "net_pnl": round(sum(r["pnl"] for r in signal_records), 2)},
-                "scheduled": {"count": len(scheduled_records), "net_pnl": round(sum(r["pnl"] for r in scheduled_records), 2)},
+                "signal": {"count": len(signal_records), "net_pnl": round(sum(r["pnl"] - r["fee"] for r in signal_records), 2)},
+                "scheduled": {"count": len(scheduled_records), "net_pnl": round(sum(r["pnl"] - r["fee"] for r in scheduled_records), 2)},
             },
         })
 
@@ -304,13 +366,17 @@ def get_analytics_by_account(
     query = build_base_query(db, start_date, end_date, environment, None)
     decisions = query.all()
 
+    # Get fees for all decisions
+    fee_map = get_fees_for_decisions(decisions)
+
     # Group by account
     by_account: Dict[Optional[int], List[Dict]] = {}
 
     for d in decisions:
         account_id = d.account_id
         pnl = float(d.realized_pnl) if d.realized_pnl else 0
-        record = {"pnl": pnl, "fee": 0, "trigger_type": get_trigger_type(d)}
+        fee = fee_map.get(d.id, 0.0)
+        record = {"pnl": pnl, "fee": fee, "trigger_type": get_trigger_type(d)}
 
         if account_id not in by_account:
             by_account[account_id] = []
@@ -343,8 +409,8 @@ def get_analytics_by_account(
             "environment": info.get("environment"),
             "metrics": calculate_metrics(records),
             "by_trigger_type": {
-                "signal": {"count": len(signal_records), "net_pnl": round(sum(r["pnl"] for r in signal_records), 2)},
-                "scheduled": {"count": len(scheduled_records), "net_pnl": round(sum(r["pnl"] for r in scheduled_records), 2)},
+                "signal": {"count": len(signal_records), "net_pnl": round(sum(r["pnl"] - r["fee"] for r in signal_records), 2)},
+                "scheduled": {"count": len(scheduled_records), "net_pnl": round(sum(r["pnl"] - r["fee"] for r in scheduled_records), 2)},
             },
         })
 
@@ -375,13 +441,17 @@ def get_analytics_by_symbol(
     query = build_base_query(db, start_date, end_date, environment, account_id)
     decisions = query.all()
 
+    # Get fees for all decisions
+    fee_map = get_fees_for_decisions(decisions)
+
     # Group by symbol
     by_symbol: Dict[Optional[str], List[Dict]] = {}
 
     for d in decisions:
         symbol = d.symbol
         pnl = float(d.realized_pnl) if d.realized_pnl else 0
-        record = {"pnl": pnl, "fee": 0, "trigger_type": get_trigger_type(d)}
+        fee = fee_map.get(d.id, 0.0)
+        record = {"pnl": pnl, "fee": fee, "trigger_type": get_trigger_type(d)}
 
         if symbol not in by_symbol:
             by_symbol[symbol] = []
@@ -400,8 +470,8 @@ def get_analytics_by_symbol(
             "symbol": symbol,
             "metrics": calculate_metrics(records),
             "by_trigger_type": {
-                "signal": {"count": len(signal_records), "net_pnl": round(sum(r["pnl"] for r in signal_records), 2)},
-                "scheduled": {"count": len(scheduled_records), "net_pnl": round(sum(r["pnl"] for r in scheduled_records), 2)},
+                "signal": {"count": len(signal_records), "net_pnl": round(sum(r["pnl"] - r["fee"] for r in signal_records), 2)},
+                "scheduled": {"count": len(scheduled_records), "net_pnl": round(sum(r["pnl"] - r["fee"] for r in scheduled_records), 2)},
             },
         })
 
@@ -432,13 +502,17 @@ def get_analytics_by_operation(
     query = build_base_query(db, start_date, end_date, environment, account_id)
     decisions = query.all()
 
+    # Get fees for all decisions
+    fee_map = get_fees_for_decisions(decisions)
+
     # Group by operation
     by_operation: Dict[str, List[Dict]] = {}
 
     for d in decisions:
         operation = d.operation or "unknown"
         pnl = float(d.realized_pnl) if d.realized_pnl else 0
-        record = {"pnl": pnl, "fee": 0, "trigger_type": get_trigger_type(d)}
+        fee = fee_map.get(d.id, 0.0)
+        record = {"pnl": pnl, "fee": fee, "trigger_type": get_trigger_type(d)}
 
         if operation not in by_operation:
             by_operation[operation] = []
@@ -454,8 +528,8 @@ def get_analytics_by_operation(
             "operation": operation,
             "metrics": calculate_metrics(records),
             "by_trigger_type": {
-                "signal": {"count": len(signal_records), "net_pnl": round(sum(r["pnl"] for r in signal_records), 2)},
-                "scheduled": {"count": len(scheduled_records), "net_pnl": round(sum(r["pnl"] for r in scheduled_records), 2)},
+                "signal": {"count": len(signal_records), "net_pnl": round(sum(r["pnl"] - r["fee"] for r in signal_records), 2)},
+                "scheduled": {"count": len(scheduled_records), "net_pnl": round(sum(r["pnl"] - r["fee"] for r in scheduled_records), 2)},
             },
         })
 
@@ -477,13 +551,17 @@ def get_analytics_by_trigger_type(
     query = build_base_query(db, start_date, end_date, environment, account_id)
     decisions = query.all()
 
+    # Get fees for all decisions
+    fee_map = get_fees_for_decisions(decisions)
+
     # Group by trigger type
     by_trigger: Dict[str, List[Dict]] = {"signal": [], "scheduled": [], "unknown": []}
 
     for d in decisions:
         trigger_type = get_trigger_type(d)
         pnl = float(d.realized_pnl) if d.realized_pnl else 0
-        record = {"pnl": pnl, "fee": 0}
+        fee = fee_map.get(d.id, 0.0)
+        record = {"pnl": pnl, "fee": fee}
         by_trigger[trigger_type].append(record)
 
     # Build response
