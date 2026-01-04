@@ -865,6 +865,17 @@
     "syncing": "Syncing...",
     "aiWinRate": "AI Win Rate",
     "operationTooltip": "Shows AI's decision intent. Buy/Sell may trigger position closure if opposite position exists (e.g., Buy while holding short = close short), resulting in realized PnL.",
+    "noTrades": "No trades found",
+    "tabs": {
+      "dimensions": "Dimension Analysis",
+      "trades": "Trade Details"
+    },
+    "tags": {
+      "all": "All",
+      "largeLoss": "Large Loss",
+      "slTriggered": "SL Triggered",
+      "consecutiveLoss": "Consecutive Loss"
+    },
     "aiAnalysis": {
       "title": "AI Strategy Diagnosis",
       "subtitle": "(Analyze trading performance and get improvement suggestions)",

@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from database.connection import SessionLocal
 from database.models import AIDecisionLog, Account, PromptTemplate
 from database.snapshot_connection import SnapshotSessionLocal
-from database.snapshot_models import HyperliquidTrade
+from database.snapshot_models import HyperliquidTrade, HyperliquidAccountSnapshot
 import logging
 
 logger = logging.getLogger(__name__)
@@ -634,3 +634,173 @@ async def get_conversation_messages(
     """Get messages for a specific conversation."""
     messages = get_attribution_messages(db, conversation_id)
     return {"messages": messages}
+
+
+# ============== Trade Details API ==============
+
+def get_exit_type(decision: AIDecisionLog) -> str:
+    """Determine exit type based on operation and order IDs."""
+    if decision.operation == 'close':
+        return 'CLOSE'
+    elif decision.tp_order_id or decision.sl_order_id:
+        if decision.realized_pnl and float(decision.realized_pnl) > 0:
+            return 'TP'
+        else:
+            return 'SL'
+    return 'CLOSE'
+
+
+def get_entry_type(decision: AIDecisionLog) -> str:
+    """Determine entry type (BUY/SELL/-)."""
+    if decision.operation in ('buy', 'sell'):
+        return decision.operation.upper()
+    return '-'
+
+
+def calculate_trade_tags(
+    decisions: List[AIDecisionLog],
+    account_equity: float,
+    equity_threshold: float = 0.05
+) -> Dict[int, List[str]]:
+    """Calculate rule-based tags for each trade."""
+    tags: Dict[int, List[str]] = {}
+    loss_threshold = account_equity * equity_threshold if account_equity > 0 else 50.0
+
+    # Sort by time for consecutive loss detection
+    sorted_decisions = sorted(decisions, key=lambda d: d.decision_time or datetime.min)
+
+    consecutive_losses = 0
+    consecutive_loss_ids = []
+
+    for d in sorted_decisions:
+        d_tags = []
+        pnl = float(d.realized_pnl) if d.realized_pnl else 0
+
+        # Large loss: |pnl| > threshold
+        if pnl < 0 and abs(pnl) > loss_threshold:
+            d_tags.append('large_loss')
+
+        # SL triggered: has sl_order_id and pnl < 0
+        if d.sl_order_id and pnl < 0:
+            d_tags.append('sl_triggered')
+
+        # Consecutive losses tracking
+        if pnl < 0:
+            consecutive_losses += 1
+            consecutive_loss_ids.append(d.id)
+        else:
+            # Mark previous consecutive losses if >= 3
+            if consecutive_losses >= 3:
+                for loss_id in consecutive_loss_ids:
+                    if loss_id not in tags:
+                        tags[loss_id] = []
+                    if 'consecutive_loss' not in tags[loss_id]:
+                        tags[loss_id].append('consecutive_loss')
+            consecutive_losses = 0
+            consecutive_loss_ids = []
+
+        tags[d.id] = d_tags
+
+    # Handle trailing consecutive losses
+    if consecutive_losses >= 3:
+        for loss_id in consecutive_loss_ids:
+            if 'consecutive_loss' not in tags.get(loss_id, []):
+                tags.setdefault(loss_id, []).append('consecutive_loss')
+
+    return tags
+
+
+@router.get("/trades")
+def get_trade_details(
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    environment: Optional[str] = Query("all"),
+    account_id: Optional[int] = Query(None),
+    tag_filter: Optional[str] = Query(None),
+    limit: int = Query(50, le=200),
+    offset: int = Query(0),
+    db: Session = Depends(get_db),
+):
+    """Get trade details with rule-based tags for micro-analysis."""
+    # Build query for closed trades
+    query = db.query(AIDecisionLog).filter(
+        AIDecisionLog.realized_pnl.isnot(None),
+        AIDecisionLog.realized_pnl != 0,
+        AIDecisionLog.hyperliquid_order_id.isnot(None)
+    )
+
+    if start_date:
+        query = query.filter(AIDecisionLog.decision_time >= datetime.combine(start_date, datetime.min.time()))
+    if end_date:
+        query = query.filter(AIDecisionLog.decision_time <= datetime.combine(end_date, datetime.max.time()))
+    if environment and environment != "all":
+        query = query.filter(AIDecisionLog.hyperliquid_environment == environment)
+    if account_id:
+        query = query.filter(AIDecisionLog.account_id == account_id)
+
+    # Get total count before pagination
+    total_count = query.count()
+
+    # Get all decisions for tag calculation (need full list for consecutive loss)
+    all_decisions = query.order_by(AIDecisionLog.decision_time.desc()).all()
+
+    # Get account equity for threshold calculation
+    account_equity = 0.0
+    if all_decisions:
+        first_account_id = all_decisions[0].account_id
+        env = environment if environment != "all" else "mainnet"
+        try:
+            snapshot_db = SnapshotSessionLocal()
+            snapshot = snapshot_db.query(HyperliquidAccountSnapshot).filter(
+                HyperliquidAccountSnapshot.account_id == first_account_id,
+                HyperliquidAccountSnapshot.environment == env
+            ).order_by(HyperliquidAccountSnapshot.created_at.desc()).first()
+            if snapshot and snapshot.total_equity:
+                account_equity = float(snapshot.total_equity)
+            snapshot_db.close()
+        except Exception as e:
+            logger.warning(f"Failed to get account equity: {e}")
+
+    # Calculate tags
+    trade_tags = calculate_trade_tags(all_decisions, account_equity)
+
+    # Get fees
+    fee_map = get_fees_for_decisions(all_decisions)
+
+    # Apply tag filter if specified
+    if tag_filter:
+        filtered_ids = [d.id for d in all_decisions if tag_filter in trade_tags.get(d.id, [])]
+        all_decisions = [d for d in all_decisions if d.id in filtered_ids]
+        total_count = len(all_decisions)
+
+    # Apply pagination
+    paginated = all_decisions[offset:offset + limit]
+
+    # Build response
+    trades = []
+    for d in paginated:
+        pnl = float(d.realized_pnl) if d.realized_pnl else 0
+        fee = fee_map.get(d.id, 0.0)
+        trades.append({
+            "id": d.id,
+            "symbol": d.symbol,
+            "decision_time": d.decision_time.isoformat() if d.decision_time else None,
+            "entry_type": get_entry_type(d),
+            "exit_type": get_exit_type(d),
+            "gross_pnl": round(pnl, 2),
+            "fees": round(fee, 2),
+            "net_pnl": round(pnl - fee, 2),
+            "tags": trade_tags.get(d.id, []),
+            "hyperliquid_order_id": d.hyperliquid_order_id,
+            "tp_order_id": d.tp_order_id,
+            "sl_order_id": d.sl_order_id,
+        })
+
+    return {
+        "trades": trades,
+        "total": total_count,
+        "limit": limit,
+        "offset": offset,
+        "account_equity": round(account_equity, 2),
+        "loss_threshold": round(account_equity * 0.05, 2) if account_equity > 0 else 50.0,
+    }

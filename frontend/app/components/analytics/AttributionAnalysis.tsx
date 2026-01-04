@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -65,6 +67,31 @@ interface Account {
   model?: string
 }
 
+// Trade details types
+interface TradeDetail {
+  id: number
+  symbol: string
+  decision_time: string | null
+  entry_type: string
+  exit_type: string
+  gross_pnl: number
+  fees: number
+  net_pnl: number
+  tags: string[]
+  hyperliquid_order_id: string | null
+  tp_order_id: string | null
+  sl_order_id: string | null
+}
+
+interface TradesResponse {
+  trades: TradeDetail[]
+  total: number
+  limit: number
+  offset: number
+  account_equity: number
+  loss_threshold: number
+}
+
 // API functions
 const API_BASE = '/api/analytics'
 
@@ -92,6 +119,12 @@ async function fetchAccounts(): Promise<Account[]> {
   }))
 }
 
+async function fetchTrades(params: URLSearchParams): Promise<TradesResponse> {
+  const res = await fetch(`${API_BASE}/trades?${params}`)
+  if (!res.ok) throw new Error('Failed to fetch trades')
+  return res.json()
+}
+
 export default function AttributionAnalysis() {
   const { t } = useTranslation()
 
@@ -115,6 +148,13 @@ export default function AttributionAnalysis() {
   const [needsSync, setNeedsSync] = useState(false)
   const [unsyncCount, setUnsyncCount] = useState(0)
   const [syncing, setSyncing] = useState(false)
+
+  // Trade details states
+  const [activeTab, setActiveTab] = useState('dimensions')
+  const [trades, setTrades] = useState<TradeDetail[]>([])
+  const [tradesTotal, setTradesTotal] = useState(0)
+  const [tradesLoading, setTradesLoading] = useState(false)
+  const [tagFilter, setTagFilter] = useState<string | null>(null)
 
   // Load accounts on mount
   useEffect(() => {
@@ -200,6 +240,28 @@ export default function AttributionAnalysis() {
       setLoading(false)
     }
   }
+
+  const loadTrades = async (filter?: string | null) => {
+    setTradesLoading(true)
+    try {
+      const params = buildParams()
+      if (filter) params.set('tag_filter', filter)
+      const data = await fetchTrades(params)
+      setTrades(data.trades)
+      setTradesTotal(data.total)
+    } catch (error) {
+      console.error('Failed to load trades:', error)
+    } finally {
+      setTradesLoading(false)
+    }
+  }
+
+  // Load trades when tab changes to 'trades' or filter changes
+  useEffect(() => {
+    if (activeTab === 'trades') {
+      loadTrades(tagFilter)
+    }
+  }, [activeTab, tagFilter, environment, accountId, timeRange])
 
   return (
     <div className="flex-1 p-4 space-y-4 overflow-auto">
@@ -303,8 +365,15 @@ export default function AttributionAnalysis() {
             <Card><CardHeader className="pb-2"><CardTitle className="text-sm">{t('attribution.tradeCount', 'Trades')}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{summary?.overview.trade_count || 0}</div></CardContent></Card>
           </div>
 
-          {/* Dimension analysis will be added here */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Tabs for Dimension Analysis and Trade Details */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 max-w-md">
+              <TabsTrigger value="dimensions">{t('attribution.tabs.dimensions', 'Dimension Analysis')}</TabsTrigger>
+              <TabsTrigger value="trades">{t('attribution.tabs.trades', 'Trade Details')}</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="dimensions" className="mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* By Symbol */}
             <Card>
               <CardHeader><CardTitle>{t('attribution.bySymbol', 'By Symbol')}</CardTitle></CardHeader>
@@ -443,7 +512,119 @@ export default function AttributionAnalysis() {
                 </table>
               </CardContent>
             </Card>
-          </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="trades" className="mt-4">
+              {/* Tag filter buttons */}
+              <div className="flex gap-2 mb-4 flex-wrap">
+                <Button
+                  variant={tagFilter === null ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTagFilter(null)}
+                >
+                  {t('attribution.tags.all', 'All')}
+                </Button>
+                <Button
+                  variant={tagFilter === 'large_loss' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTagFilter('large_loss')}
+                >
+                  {t('attribution.tags.largeLoss', 'Large Loss')}
+                </Button>
+                <Button
+                  variant={tagFilter === 'sl_triggered' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTagFilter('sl_triggered')}
+                >
+                  {t('attribution.tags.slTriggered', 'SL Triggered')}
+                </Button>
+                <Button
+                  variant={tagFilter === 'consecutive_loss' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTagFilter('consecutive_loss')}
+                >
+                  {t('attribution.tags.consecutiveLoss', 'Consecutive Loss')}
+                </Button>
+              </div>
+
+              {/* Trade details table */}
+              <Card>
+                <CardContent className="p-0">
+                  {tradesLoading ? (
+                    <div className="text-center py-8 text-muted-foreground">Loading...</div>
+                  ) : trades.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      {t('attribution.noTrades', 'No trades found')}
+                    </div>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-muted-foreground">
+                          <th className="text-left p-2 font-medium">Symbol</th>
+                          <th className="text-left p-2 font-medium">Time</th>
+                          <th className="text-center p-2 font-medium">Entry</th>
+                          <th className="text-center p-2 font-medium">Exit</th>
+                          <th className="text-right p-2 font-medium">Gross PnL</th>
+                          <th className="text-right p-2 font-medium">Fees</th>
+                          <th className="text-right p-2 font-medium">Net PnL</th>
+                          <th className="text-left p-2 font-medium">Tags</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {trades.map((trade) => (
+                          <tr key={trade.id} className="border-b last:border-0 hover:bg-muted/50">
+                            <td className="p-2 font-medium">{trade.symbol}</td>
+                            <td className="p-2 text-muted-foreground">
+                              {trade.decision_time ? new Date(trade.decision_time).toLocaleString() : '-'}
+                            </td>
+                            <td className="p-2 text-center">
+                              <span className={trade.entry_type === 'BUY' ? 'text-green-500' : trade.entry_type === 'SELL' ? 'text-red-500' : ''}>
+                                {trade.entry_type}
+                              </span>
+                            </td>
+                            <td className="p-2 text-center">
+                              <span className={trade.exit_type === 'TP' ? 'text-green-500' : trade.exit_type === 'SL' ? 'text-red-500' : ''}>
+                                {trade.exit_type}
+                              </span>
+                            </td>
+                            <td className={`p-2 text-right ${trade.gross_pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                              ${trade.gross_pnl.toFixed(2)}
+                            </td>
+                            <td className="p-2 text-right text-orange-500">${trade.fees.toFixed(2)}</td>
+                            <td className={`p-2 text-right ${trade.net_pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                              ${trade.net_pnl.toFixed(2)}
+                            </td>
+                            <td className="p-2">
+                              <div className="flex gap-1 flex-wrap">
+                                {trade.tags.map((tag) => (
+                                  <Badge
+                                    key={tag}
+                                    variant="secondary"
+                                    className={
+                                      tag === 'large_loss' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
+                                      tag === 'sl_triggered' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' :
+                                      tag === 'consecutive_loss' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
+                                      ''
+                                    }
+                                  >
+                                    {tag === 'large_loss' ? t('attribution.tags.largeLoss', 'Large Loss') :
+                                     tag === 'sl_triggered' ? t('attribution.tags.slTriggered', 'SL Triggered') :
+                                     tag === 'consecutive_loss' ? t('attribution.tags.consecutiveLoss', 'Consecutive Loss') :
+                                     tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </>
       )}
 

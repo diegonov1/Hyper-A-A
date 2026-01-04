@@ -875,6 +875,17 @@
     "syncing": "同步中...",
     "aiWinRate": "AI胜率",
     "operationTooltip": "显示AI的决策意图。如果存在反向持仓，Buy/Sell可能触发平仓（如持有空仓时Buy=平空仓），从而产生盈亏。",
+    "noTrades": "暂无交易记录",
+    "tabs": {
+      "dimensions": "维度分析",
+      "trades": "交易明细"
+    },
+    "tags": {
+      "all": "全部",
+      "largeLoss": "大额亏损",
+      "slTriggered": "止损触发",
+      "consecutiveLoss": "连续亏损"
+    },
     "aiAnalysis": {
       "title": "AI策略诊断",
       "subtitle": "（分析交易表现，获取改进建议）",
