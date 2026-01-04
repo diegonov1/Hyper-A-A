@@ -650,10 +650,27 @@ def get_exit_type(decision: AIDecisionLog) -> str:
     return 'CLOSE'
 
 
-def get_entry_type(decision: AIDecisionLog) -> str:
-    """Determine entry type (BUY/SELL/-)."""
+def get_entry_type(decision: AIDecisionLog, db: Session) -> str:
+    """Determine entry type (BUY/SELL/-).
+
+    For close operations, look up the corresponding opening trade.
+    """
     if decision.operation in ('buy', 'sell'):
         return decision.operation.upper()
+
+    # For close operation, find the corresponding opening trade
+    if decision.operation == 'close' and decision.symbol and decision.wallet_address:
+        # Find the most recent buy/sell for the same symbol before this close
+        opening_trade = db.query(AIDecisionLog).filter(
+            AIDecisionLog.symbol == decision.symbol,
+            AIDecisionLog.wallet_address == decision.wallet_address,
+            AIDecisionLog.operation.in_(['buy', 'sell']),
+            AIDecisionLog.decision_time < decision.decision_time
+        ).order_by(AIDecisionLog.decision_time.desc()).first()
+
+        if opening_trade:
+            return opening_trade.operation.upper()
+
     return '-'
 
 
@@ -785,7 +802,7 @@ def get_trade_details(
             "id": d.id,
             "symbol": d.symbol,
             "decision_time": d.decision_time.isoformat() if d.decision_time else None,
-            "entry_type": get_entry_type(d),
+            "entry_type": get_entry_type(d, db),
             "exit_type": get_exit_type(d),
             "gross_pnl": round(pnl, 2),
             "fees": round(fee, 2),

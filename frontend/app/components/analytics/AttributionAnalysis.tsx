@@ -576,7 +576,7 @@ export default function AttributionAnalysis() {
                           <tr key={trade.id} className="border-b last:border-0 hover:bg-muted/50">
                             <td className="p-2 font-medium">{trade.symbol}</td>
                             <td className="p-2 text-muted-foreground">
-                              {trade.decision_time ? new Date(trade.decision_time).toLocaleString() : '-'}
+                              {trade.decision_time ? new Date(trade.decision_time + 'Z').toLocaleString() : '-'}
                             </td>
                             <td className="p-2 text-center">
                               <span className={trade.entry_type === 'BUY' ? 'text-green-500' : trade.entry_type === 'SELL' ? 'text-red-500' : ''}>
