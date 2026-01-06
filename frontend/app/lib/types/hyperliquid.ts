@@ -102,6 +102,25 @@ export interface OrderResult {
   averagePrice: number;
 }
 
+// Response from manual order API
+export interface ManualOrderResponse {
+  account_id: number;
+  environment: HyperliquidEnvironment;
+  order_result: {
+    main_order: OrderResult;
+    tp_order?: {
+      trigger_px: number;
+      limit_px?: number;
+      is_market: boolean;
+    };
+    sl_order?: {
+      trigger_px: number;
+      limit_px?: number;
+      is_market: boolean;
+    };
+  };
+}
+
 export interface TestConnectionResponse {
   success: boolean;
   environment: HyperliquidEnvironment;

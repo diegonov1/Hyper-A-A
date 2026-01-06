@@ -2615,6 +2615,8 @@ class HyperliquidTradingClient:
         reduce_only: bool = False,
         take_profit_price: Optional[float] = None,
         stop_loss_price: Optional[float] = None,
+        tp_execution: str = "limit",
+        sl_execution: str = "limit",
     ) -> Dict[str, Any]:
         """
         Place order with take profit and stop loss using Hyperliquid official SDK
@@ -2630,6 +2632,8 @@ class HyperliquidTradingClient:
             reduce_only: Only close existing positions
             take_profit_price: Optional take profit trigger price
             stop_loss_price: Optional stop loss trigger price
+            tp_execution: TP execution mode - "limit" (attempts maker with offset) or "market" (immediate fill)
+            sl_execution: SL execution mode - "limit" (may save fees) or "market" (guarantees execution)
 
         Returns:
             Dict with order results including TP/SL order IDs
@@ -2651,6 +2655,13 @@ class HyperliquidTradingClient:
         valid_tif = ["Ioc", "Gtc", "Alo"]
         if time_in_force not in valid_tif:
             raise ValueError(f"Invalid time_in_force: {time_in_force}. Must be one of {valid_tif}")
+
+        # Validate tp_execution and sl_execution
+        valid_execution = ["market", "limit"]
+        if tp_execution not in valid_execution:
+            raise ValueError(f"Invalid tp_execution: {tp_execution}. Must be one of {valid_execution}")
+        if sl_execution not in valid_execution:
+            raise ValueError(f"Invalid sl_execution: {sl_execution}. Must be one of {valid_execution}")
 
         # ===== Dynamic Precision Handling =====
         # Fetch asset-specific precision requirements from Hyperliquid
@@ -2826,11 +2837,36 @@ class HyperliquidTradingClient:
                 # Place TP order
                 if take_profit_price:
                     try:
-                        logger.info(f"[SDK] Placing TP order: {symbol} {'SELL' if is_buy else 'BUY'} {size}@{take_profit_price}")
+                        logger.info(f"[SDK] Placing TP order: {symbol} {'SELL' if is_buy else 'BUY'} {size}@{take_profit_price} execution={tp_execution}")
+
+                        # Calculate TP limit price based on execution mode
+                        if tp_execution == "market":
+                            # Market execution: trigger as market order
+                            tp_is_market = True
+                            tp_limit_px = take_profit_price
+                        else:  # "limit"
+                            # Limit execution: attempt maker with 0.05% offset
+                            tp_is_market = False
+                            if is_buy:  # Long position, TP sells higher
+                                tp_limit_px = take_profit_price * 1.0005
+                            else:  # Short position, TP buys lower
+                                tp_limit_px = take_profit_price * 0.9995
+
+                            # Round the offset limit price
+                            tp_limit_px = self._round_to_precision(
+                                tp_limit_px,
+                                price_decimals,
+                                size_decimals,
+                                is_price=True,
+                                price_tick=price_tick,
+                                size_step=size_step,
+                                is_buy=not is_buy,
+                            )
+                            logger.info(f"[SDK] TP limit mode: trigger={take_profit_price}, limit={tp_limit_px} (0.05% offset)")
 
                         tp_order_type = {"trigger": {
                             "triggerPx": take_profit_price,
-                            "isMarket": False,
+                            "isMarket": tp_is_market,
                             "tpsl": "tp"
                         }}
 
@@ -2839,7 +2875,7 @@ class HyperliquidTradingClient:
                             "name": symbol,
                             "is_buy": not is_buy,
                             "sz": size,
-                            "limit_px": take_profit_price,
+                            "limit_px": tp_limit_px,
                             "order_type": tp_order_type,
                             "reduce_only": True
                         }
@@ -2867,11 +2903,22 @@ class HyperliquidTradingClient:
                 # Place SL order
                 if stop_loss_price:
                     try:
-                        logger.info(f"[SDK] Placing SL order: {symbol} {'SELL' if is_buy else 'BUY'} {size}@{stop_loss_price}")
+                        logger.info(f"[SDK] Placing SL order: {symbol} {'SELL' if is_buy else 'BUY'} {size}@{stop_loss_price} execution={sl_execution}")
+
+                        # Calculate SL limit price based on execution mode
+                        if sl_execution == "market":
+                            # Market execution: trigger as market order
+                            sl_is_market = True
+                            sl_limit_px = stop_loss_price
+                        else:  # "limit"
+                            # Limit execution: may save fees but has execution risk
+                            sl_is_market = False
+                            sl_limit_px = stop_loss_price
+                            logger.info(f"[SDK] SL limit mode: trigger={stop_loss_price}, limit={sl_limit_px} (no offset for stop loss)")
 
                         sl_order_type = {"trigger": {
                             "triggerPx": stop_loss_price,
-                            "isMarket": False,
+                            "isMarket": sl_is_market,
                             "tpsl": "sl"
                         }}
 
@@ -2880,7 +2927,7 @@ class HyperliquidTradingClient:
                             "name": symbol,
                             "is_buy": not is_buy,  # Opposite direction
                             "sz": size,
-                            "limit_px": stop_loss_price,
+                            "limit_px": sl_limit_px,
                             "order_type": sl_order_type,
                             "reduce_only": True
                         }

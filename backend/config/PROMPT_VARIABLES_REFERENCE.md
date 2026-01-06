@@ -93,6 +93,39 @@ trigger_interval: 150 minutes
 
 ---
 
+## Order Execution Variables (Advanced)
+
+These variables control how orders are executed on Hyperliquid.
+
+| Variable | Description | Values | Default |
+|----------|-------------|--------|---------|
+| `time_in_force` | Order time-in-force mode | "Ioc", "Gtc", "Alo" | "Ioc" |
+| `tp_execution` | Take profit execution mode | "market", "limit" | "limit" |
+| `sl_execution` | Stop loss execution mode | "market", "limit" | "limit" |
+
+### Time-in-Force Options
+
+| Value | Description | Fee Impact |
+|-------|-------------|------------|
+| `Ioc` | Immediate or Cancel - fills immediately or cancels unfilled portion | Always taker fee (0.0432%) |
+| `Gtc` | Good Til Canceled - remains on order book until filled or canceled | May become maker (0.0144%) if not immediately filled |
+| `Alo` | Add Liquidity Only (Post-Only) - only adds to order book, never takes | Always maker fee (0.0144%), but may not fill in fast markets |
+
+### TP/SL Execution Modes
+
+| Value | Description | Fee Impact | Risk |
+|-------|-------------|------------|------|
+| `market` | Executes immediately at market price when triggered | Taker fee (0.0432%) | Guaranteed fill |
+| `limit` | Places limit order with 0.05% offset to attempt maker status | May get maker fee (0.0144%) | May not fill in fast markets |
+
+**Note**: For TP limit mode, the system adds a 0.05% price offset:
+- Long position TP (sell): `limit_price = trigger_price * 1.0005`
+- Short position TP (buy): `limit_price = trigger_price * 0.9995`
+
+This offset increases the chance of becoming a maker order while still ensuring reasonable fill probability.
+
+---
+
 ## Symbol Selection Variables
 
 | Variable | Description | Example |

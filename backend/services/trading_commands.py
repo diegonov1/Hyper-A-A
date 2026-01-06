@@ -607,6 +607,8 @@ def place_ai_driven_hyperliquid_order(
                     take_profit_price = decision.get("take_profit_price")
                     stop_loss_price = decision.get("stop_loss_price")
                     time_in_force = decision.get("time_in_force", "Ioc")  # Default to Ioc (market-like)
+                    tp_execution = decision.get("tp_execution", "limit")  # Default to limit (attempts maker)
+                    sl_execution = decision.get("sl_execution", "limit")  # Default to limit
 
                     # Price validation for BUY operation
                     if max_price is not None:
@@ -650,7 +652,9 @@ def place_ai_driven_hyperliquid_order(
                         time_in_force=time_in_force,
                         reduce_only=False,
                         take_profit_price=take_profit_price,
-                        stop_loss_price=stop_loss_price
+                        stop_loss_price=stop_loss_price,
+                        tp_execution=tp_execution,
+                        sl_execution=sl_execution
                     )
 
                     # Fallback: If IOC failed due to no liquidity, retry with GTC
@@ -670,7 +674,9 @@ def place_ai_driven_hyperliquid_order(
                                 time_in_force="Gtc",  # Changed from Ioc to Gtc
                                 reduce_only=False,
                                 take_profit_price=take_profit_price,
-                                stop_loss_price=stop_loss_price
+                                stop_loss_price=stop_loss_price,
+                                tp_execution=tp_execution,
+                                sl_execution=sl_execution
                             )
                             if order_result and order_result.get('status') in ['filled', 'resting']:
                                 logger.info(f"✅ GTC fallback order succeeded for BUY {symbol}")
@@ -691,6 +697,8 @@ def place_ai_driven_hyperliquid_order(
                     take_profit_price = decision.get("take_profit_price")
                     stop_loss_price = decision.get("stop_loss_price")
                     time_in_force = decision.get("time_in_force", "Ioc")  # Default to Ioc (market-like)
+                    tp_execution = decision.get("tp_execution", "limit")  # Default to limit (attempts maker)
+                    sl_execution = decision.get("sl_execution", "limit")  # Default to limit
 
                     # Price validation for SELL operation
                     if min_price is not None:
@@ -734,7 +742,9 @@ def place_ai_driven_hyperliquid_order(
                         time_in_force=time_in_force,
                         reduce_only=False,
                         take_profit_price=take_profit_price,
-                        stop_loss_price=stop_loss_price
+                        stop_loss_price=stop_loss_price,
+                        tp_execution=tp_execution,
+                        sl_execution=sl_execution
                     )
 
                     # Fallback: If IOC failed due to no liquidity, retry with GTC
@@ -754,7 +764,9 @@ def place_ai_driven_hyperliquid_order(
                                 time_in_force="Gtc",  # Changed from Ioc to Gtc
                                 reduce_only=False,
                                 take_profit_price=take_profit_price,
-                                stop_loss_price=stop_loss_price
+                                stop_loss_price=stop_loss_price,
+                                tp_execution=tp_execution,
+                                sl_execution=sl_execution
                             )
                             if order_result and order_result.get('status') in ['filled', 'resting']:
                                 logger.info(f"✅ GTC fallback order succeeded for SELL {symbol}")

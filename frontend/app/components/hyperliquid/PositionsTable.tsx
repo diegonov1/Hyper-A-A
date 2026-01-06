@@ -118,7 +118,7 @@ export default function PositionsTable({
         throw new Error('Unable to determine market price for closing the position');
       }
 
-      await placeManualOrder(accountId, {
+      const response = await placeManualOrder(accountId, {
         symbol: position.coin,
         is_buy: position.side === 'SHORT', // Opposite side to close
         size: position.sizeAbs,
@@ -129,7 +129,15 @@ export default function PositionsTable({
         environment,
       });
 
-      toast.success(`Closed ${position.side} position for ${position.coin}`);
+      // Check if order was actually filled
+      const orderStatus = response?.order_result?.main_order?.status;
+      if (orderStatus === 'filled') {
+        toast.success(`Closed ${position.side} position for ${position.coin}`);
+      } else {
+        // Order was not filled (e.g., IOC order couldn't match)
+        toast.error(`Failed to close position: order status is "${orderStatus || 'unknown'}". Try again or adjust price.`);
+        return;
+      }
       await loadPositions();
 
       if (onPositionClosed) {

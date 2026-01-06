@@ -12,7 +12,7 @@ import type {
   SetupRequest,
   SwitchEnvironmentRequest,
   ManualOrderRequest,
-  OrderResult,
+  ManualOrderResponse,
   TestConnectionResponse,
   HyperliquidHealthResponse,
 } from './types/hyperliquid';
@@ -154,7 +154,7 @@ export async function getCurrentPrice(symbol: string): Promise<number> {
 export async function placeManualOrder(
   accountId: number,
   order: ManualOrderRequest
-): Promise<OrderResult> {
+): Promise<ManualOrderResponse> {
   const response = await apiRequest(
     `${HYPERLIQUID_API_BASE}/accounts/${accountId}/orders/manual`,
     {

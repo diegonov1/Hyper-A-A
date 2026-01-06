@@ -370,9 +370,11 @@ OUTPUT_FORMAT_JSON = (
     '      "leverage": <integer 1-20>,\n'
     '      "max_price": <number, required for "buy" operations>,\n'
     '      "min_price": <number, required for "sell"/"close" operations>,\n'
-    '      "time_in_force": "Ioc",\n'
+    '      "time_in_force": "Ioc" | "Gtc" | "Alo",\n'
     '      "take_profit_price": <number, optional, take profit trigger price>,\n'
     '      "stop_loss_price": <number, optional, stop loss trigger price>,\n'
+    '      "tp_execution": "market" | "limit",\n'
+    '      "sl_execution": "market" | "limit",\n'
     '      "reason": "<string explaining primary signals>",\n'
     '      "trading_strategy": "<string covering thesis, risk controls, and exit plan>"\n'
     '    }\n'
@@ -395,9 +397,11 @@ OUTPUT_FORMAT_COMPLETE = """Respond with ONLY a JSON object using this schema (a
       "leverage": <integer 1-__MAX_LEVERAGE__>,
       "max_price": <number, required for "buy" operations>,
       "min_price": <number, required for "sell"/"close" operations>,
-      "time_in_force": "Ioc",
+      "time_in_force": "Ioc" | "Gtc" | "Alo",
       "take_profit_price": <number, optional>,
       "stop_loss_price": <number, optional>,
+      "tp_execution": "market" | "limit",
+      "sl_execution": "market" | "limit",
       "reason": "<string explaining primary signals>",
       "trading_strategy": "<string covering thesis, risk controls, and exit plan>"
     }}
@@ -424,6 +428,8 @@ Example output with multiple simultaneous orders:
       "time_in_force": "Ioc",
       "take_profit_price": 52000,
       "stop_loss_price": 47500,
+      "tp_execution": "limit",
+      "sl_execution": "market",
       "reason": "Strong bullish momentum with support holding at $48k, RSI recovering from oversold",
       "trading_strategy": "Opening 3x leveraged long position with 30% balance. Take profit at $52k resistance (+5%), stop loss below $47.5k swing low (-4%). Using IOC for immediate execution."
     }},
@@ -447,10 +453,24 @@ FIELD TYPE REQUIREMENTS:
 - leverage: integer (between 1 and __MAX_LEVERAGE__, REQUIRED field)
 - max_price: number (required for "buy" operations and closing SHORT positions. This is the maximum price you are willing to pay.)
 - min_price: number (required for "sell" operations and closing LONG positions. This is the minimum price you are willing to receive.)
+- time_in_force: string (optional, default "Ioc") - Order time in force: "Ioc" (immediate or cancel, taker-focused), "Gtc" (good til canceled, may become maker), "Alo" (add liquidity only, maker-only)
 - take_profit_price: number (optional but recommended, trigger price for profit taking)
 - stop_loss_price: number (optional but recommended, trigger price for loss protection)
+- tp_execution: string (optional, default "limit") - TP execution mode: "limit" (attempts maker with 0.05% offset, may save fees but has fill risk), "market" (immediate execution, guarantees fill)
+- sl_execution: string (optional, default "limit") - SL execution mode: "limit" (may save fees), "market" (guarantees stop loss execution)
 - reason: string explaining the key catalyst, risk, or signal (no strict length limit, but stay focused)
-- trading_strategy: string covering entry thesis, leverage reasoning, liquidation awareness, and exit plan"""
+- trading_strategy: string covering entry thesis, leverage reasoning, liquidation awareness, and exit plan
+
+FIELD CLASSIFICATION:
+- ALWAYS REQUIRED: operation, symbol, reason, trading_strategy
+- REQUIRED FOR buy/sell: target_portion_of_balance, leverage, max_price (buy) or min_price (sell)
+- REQUIRED FOR close: target_portion_of_balance, max_price (close short) or min_price (close long)
+- OPTIONAL WITH DEFAULTS: time_in_force (default "Ioc"), tp_execution (default "limit"), sl_execution (default "limit")
+- OPTIONAL BUT RECOMMENDED: take_profit_price, stop_loss_price
+
+FIELD DEPENDENCIES:
+- tp_execution only applies when take_profit_price is set (ignored otherwise)
+- sl_execution only applies when stop_loss_price is set (ignored otherwise)"""
 
 
 DECISION_TASK_TEXT = (

@@ -156,6 +156,23 @@ Market Regime provides AI-ready classification of current market conditions by c
 - `{news_section}` - Latest cryptocurrency news
 - `{trigger_context}` - **IMPORTANT**: Trigger context information showing what triggered this AI decision (signal pool or scheduled interval), including signal details when triggered by signals
 
+### Order Execution Variables
+These variables control how orders are executed on Hyperliquid:
+
+**Time-in-Force (TIF) Options:**
+- `Ioc` (Immediate or Cancel) - Default. Fills immediately or cancels unfilled portion. Always taker fee (0.0432%)
+- `Gtc` (Good Til Canceled) - Remains on order book until filled. May become maker (0.0144%) if not immediately filled
+- `Alo` (Add Liquidity Only) - Post-only, never takes. Always maker fee (0.0144%), but may not fill in fast markets
+
+**TP/SL Execution Modes:**
+- `market` - Executes immediately at market price when triggered. Taker fee, guaranteed fill
+- `limit` - Default. Places limit order with 0.05% offset to attempt maker status. May save fees but has fill risk
+
+**Fee Impact Summary:**
+- Taker fee: 0.0432%
+- Maker fee: 0.0144%
+- Using `Alo` for entry + `limit` for TP/SL can reduce total fees by ~66%
+
 ## Prompt Structure Guidelines
 
 A complete AI Trader prompt consists of **FIXED sections** (system infrastructure) and **VARIABLE sections** (user strategy).
@@ -237,6 +254,7 @@ These sections are customized based on the user's trading strategy and preferenc
 - Margin usage targets
 - Funding rate considerations
 - Time-in-force (TIF) preferences (Ioc/Gtc/Alo)
+- TP/SL execution mode preferences (market/limit)
 
 **6. DECISION REQUIREMENTS**
 - Concrete output constraints
