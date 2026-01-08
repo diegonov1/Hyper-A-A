@@ -2,7 +2,9 @@
 
 **English** | [简体中文](./README.zh-CN.md)
 
-> A **production-ready**, open-source AI trading platform that enables anyone—**with or without coding experience**—to deploy autonomous LLM-powered cryptocurrency trading strategies. Features built-in AI assistants for signal creation and prompt generation. Supports Hyperliquid DEX (testnet paper trading & mainnet real trading), with Binance and Aster DEX integration planned. **English & 中文 supported.**
+> **First open-source platform with market flow signal monitoring**. Precisely monitors institutional order flow, open interest changes, and funding rate extremes. Detects market structural changes in real-time and activates AI trader for decision analysis. AI-assisted strategy and signal configuration—no coding required.
+>
+> **Essential tool for Hyperliquid traders**. One-click Docker deployment, active Telegram community, frequent updates. Supports testnet paper trading & mainnet real trading. **English & 中文 supported.**
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![GitHub stars](https://img.shields.io/github/stars/HammerGPT/Hyper-Alpha-Arena)](https://github.com/HammerGPT/Hyper-Alpha-Arena/stargazers)
@@ -51,68 +53,39 @@ Hyper Alpha Arena is a production-ready AI trading platform where Large Language
 
 ## Features
 
-### Core Trading Features
-- **Multi-Model LLM Support**: OpenAI API compatible models (GPT-5, Claude, Deepseek, etc.)
-- **Multi-Wallet Architecture**: Each AI Trader can configure separate wallets for Testnet and Mainnet
-- **Global Trading Mode**: Centralized environment switch affecting all AI Traders simultaneously
-- **AI Prompt Generator**: Interactive chat interface for generating optimized trading strategy prompts
-  - Natural language conversation to define trading goals and risk preferences
-  - Automatic generation of structured prompts with technical indicators
-  - Conversation history management with title editing
-  - One-click application to AI Trader configurations
-- **Prompt Template Management**:
-  - Customizable AI trading prompts with visual editor
-  - Account-specific prompt binding system with Hyperliquid-specific templates
-  - Default, Pro, and Hyperliquid templates with leverage education
-  - Automatic fallback to default template for unbound accounts
-- **Technical Analysis Integration**: 11 built-in technical indicators
-  - Trend: SMA, EMA, MACD
-  - Momentum: RSI, Stochastic Oscillator
-  - Volatility: Bollinger Bands, ATR
-  - Volume: OBV, VWAP
-  - Support/Resistance: Pivot Points, Fibonacci Retracement
-- **Real-time Market Data**: Live cryptocurrency price feeds from multiple exchanges via ccxt
-- **Signal-Triggered Trading**: Define market conditions that activate AI analysis
-  - Create custom signals: OI changes, funding rate spikes, price breakouts
-  - AI Signal Generator: Natural language to signal configuration
-  - Combine with scheduled triggers for comprehensive coverage
-- **AI Trader Management**: Create and manage multiple AI trading agents with independent configurations
-- **AI Attribution Analysis**: Understand what's working and what's not
-  - Performance breakdown by symbol, strategy, and trigger type
-  - Win rate, profit factor, and PnL tracking
-  - AI-powered diagnosis to identify strategy weaknesses
+**Market Flow Signal Monitoring** - No need to watch charts 24/7. Automatically triggers when big money moves. Monitors order flow imbalance, open interest surges, funding rate extremes—activates AI analysis only when market structure changes.
 
-### Hyperliquid Trading Features
-- **Perpetual Contract Trading**: Real order execution on Hyperliquid DEX
-  - Market and limit orders with 1-50x leverage support
-  - Long and short positions with automatic liquidation price calculation
-  - Cross-margin mode with real-time margin usage monitoring
-- **Environment Isolation**: Strict separation of Testnet and Mainnet
-  - Separate wallet configurations per environment
-  - Environment-aware caching with `(account_id, environment)` composite keys
-  - API call isolation preventing cross-environment data contamination
-- **Risk Management**: Built-in safety mechanisms
-  - Maximum leverage limits (configurable per account, 1-50x)
-  - Margin usage alerts (auto-pause trading at 80% usage)
-  - Liquidation price display and warnings
-- **AI-Driven Trading**: LLM-powered perpetual contract trading
-  - Leverage-aware AI prompts with risk management education
-  - Automatic leverage selection based on market confidence
-  - Full integration with existing AI decision engine
+**AI-Assisted Configuration** - Can't write strategy prompts? Don't know how to set signal conditions? Conversational AI generators help you configure from scratch, no coding required.
+
+**Trade Attribution Analytics** - Don't know what's wrong with your strategy? Performance breakdown by symbol, trigger type, and time period. AI diagnosis identifies weaknesses and suggests optimizations.
+
+**Multi-Account Real-Time Comparison** - Don't know which strategy works better? Real-time asset curve comparison across multiple AI traders, with trade markers displayed on individual curves.
+
+**Deep Hyperliquid Integration** - Seamless testnet/mainnet switching, native 1-50x leverage support, built-in margin monitoring and liquidation price warnings.
+
+**Multi-Model LLM Support** - Compatible with OpenAI API models (GPT-5, Claude, Deepseek, etc.). Multi-wallet architecture with independent testnet/mainnet configurations.
 
 ## Screenshots
 
-### Dashboard Overview
+### Dashboard with Multi-Account Comparison
 ![Dashboard Overview](screenshots/dashboard-overview.png)
+*Real-time asset curves for multiple AI traders with trade markers on individual curves*
+
+### Signal Pool Configuration
+![Signal Pool Configuration](screenshots/signal-pool-configuration.png)
+*Market flow signal monitoring - CVD, OI Delta, Funding Rate triggers*
+
+### Attribution Analytics
+![Attribution Analytics](screenshots/attribution-analytics.png)
+*Performance breakdown and AI-powered strategy diagnosis*
 
 ### AI Prompt Generator
 ![AI Prompt Generator](screenshots/ai-prompt-generator.png)
+*Conversational AI assistant for strategy creation*
 
 ### Technical Analysis
 ![Technical Analysis](screenshots/ai-technical-analysis.png)
-
-### Trader Configuration
-![Trader Configuration](screenshots/trader-configuration.png)
+*Built-in technical indicators and market data visualization*
 
 ## Quick Start
 

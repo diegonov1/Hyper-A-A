@@ -2,7 +2,9 @@
 
 [English](./README.md) | **简体中文**
 
-> 开箱即用的开源 AI 交易平台。不会写代码？没关系——用自然语言就能让 AI 帮你自动交易加密货币。支持 Hyperliquid DEX（测试网模拟 + 主网实盘），Binance、Aster DEX 即将接入。
+> **首个具备市场流动信号监控的开源 AI 交易平台**。精准监控大资金订单流、持仓量变化、资金费率异常，实时发现市场结构性变化并激活 AI 交易员进行决策分析。AI 全程辅助策略和信号配置，无需编程。
+>
+> **Hyperliquid 交易者的首选工具**。Docker 一键部署开箱即用，活跃的 Telegram 技术社区，持续快速迭代更新。支持测试网模拟交易和主网实盘交易。
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![GitHub stars](https://img.shields.io/github/stars/HammerGPT/Hyper-Alpha-Arena)](https://github.com/HammerGPT/Hyper-Alpha-Arena/stargazers)
@@ -49,65 +51,39 @@ Hyper Alpha Arena 是一个 AI 交易平台——让 GPT、Claude、Deepseek 这
 
 ## 核心功能
 
-### 交易能力
-- **多模型支持**：GPT、Claude、Deepseek……兼容所有 OpenAI API 格式的模型
-- **多钱包架构**：每个 AI Trader 可以分别配置测试网和主网钱包
-- **全局环境切换**：一键切换所有 Trader 的交易环境
-- **AI 提示词生成器**：
-  - 用自然语言描述你的交易想法
-  - AI 自动生成结构化的策略提示词
-  - 支持对话历史管理
-  - 一键应用到 Trader 配置
-- **提示词模板管理**：
-  - 可视化编辑器，自定义交易提示词
-  - 支持账户级别的模板绑定
-  - 内置默认、专业版、Hyperliquid 专用模板
-- **技术指标**：内置 11 个常用指标
-  - 趋势类：SMA、EMA、MACD
-  - 动量类：RSI、随机指标
-  - 波动类：布林带、ATR
-  - 成交量：OBV、VWAP
-  - 支撑阻力：枢轴点、斐波那契
-- **信号触发交易**：
-  - 自定义触发条件：OI 变化、资金费率异动、价格突破……
-  - AI 信号生成器：用自然语言描述，自动转成信号配置
-  - 可与定时触发组合使用
-- **多 Trader 管理**：创建多个 AI Trader，各自独立配置
-- **AI 归因分析**：看清哪笔赚、哪笔亏
-  - 按币种、策略、触发类型拆解收益
-  - 胜率、盈亏比、PnL 追踪
-  - AI 辅助诊断，找出策略短板
+**市场流动信号监控** - 不用 24/7 盯盘，大资金异动时自动触发。监控订单流失衡、持仓量激增、资金费率极端，只在市场结构性变化时激活 AI 分析。
 
-### Hyperliquid 专属功能
-- **永续合约交易**：
-  - 市价单、限价单，1-50 倍杠杆
-  - 多空双向，自动计算强平价
-  - 全仓模式，实时监控保证金
-- **环境隔离**：
-  - 测试网、主网严格分开
-  - 钱包、缓存、API 调用完全隔离
-- **风控机制**：
-  - 最大杠杆限制（可按账户配置）
-  - 保证金使用率超 80% 自动暂停
-  - 强平价格预警
-- **AI 驱动交易**：
-  - 杠杆感知提示词，内置风控教育
-  - AI 根据市场信心自动选择杠杆倍数
-  - 与现有 AI 决策引擎无缝集成
+**AI 全程辅助配置** - 不会写策略提示词？不会设置信号条件？对话式 AI 生成器帮你从零开始配置，无需编程基础。
+
+**交易归因分析** - 不知道策略哪里出问题？按币种、触发类型、时间段拆解盈亏，AI 诊断策略弱点并给出优化建议。
+
+**多账户实时对比** - 不知道哪个策略更有效？多个 AI Trader 资产曲线实时对比，交易标记显示在各自曲线上，一目了然。
+
+**Hyperliquid 深度集成** - Testnet 免费纸盘 + Mainnet 实盘无缝切换，1-50x 杠杆原生支持，保证金监控和清算价预警内置。
+
+**多模型 LLM 支持** - 兼容 OpenAI API 格式模型（GPT-5、Claude、Deepseek 等）。多钱包架构，测试网/主网独立配置。
 
 ## 界面预览
 
-### 仪表盘总览
+### 多账户资产曲线对比
 ![仪表盘总览](screenshots/dashboard-overview.png)
+*多个 AI Trader 实时资产曲线对比，交易标记显示在各自曲线上*
+
+### 信号池配置
+![信号池配置](screenshots/signal-pool-configuration.png)
+*市场流动信号监控 - CVD、OI Delta、资金费率触发*
+
+### 交易归因分析
+![交易归因分析](screenshots/attribution-analytics.png)
+*盈亏拆解与 AI 策略诊断*
 
 ### AI 提示词生成器
 ![AI 提示词生成器](screenshots/ai-prompt-generator.png)
+*对话式 AI 辅助策略创建*
 
 ### 技术分析
 ![技术分析](screenshots/ai-technical-analysis.png)
-
-### Trader 配置
-![Trader 配置](screenshots/trader-configuration.png)
+*内置技术指标与市场数据可视化*
 
 ## 快速开始
 
