@@ -161,6 +161,9 @@ async def export_trader_data(
             "realized_pnl": float(log.realized_pnl) if log.realized_pnl else None,
             "pnl_updated_at": _serialize_datetime(log.pnl_updated_at),
             "created_at": _serialize_datetime(log.created_at),
+            # Fields for trigger type and prompt association
+            "signal_trigger_id": log.signal_trigger_id,
+            "prompt_template_id": log.prompt_template_id,
         }
 
         # Get related trades from snapshot database
@@ -347,6 +350,12 @@ async def execute_import(
     if not account:
         raise HTTPException(status_code=404, detail="Target account not found")
 
+    # Get target trader's bound prompt template for association
+    prompt_binding = db.query(AccountPromptBinding).filter(
+        AccountPromptBinding.account_id == account_id
+    ).first()
+    target_prompt_template_id = prompt_binding.prompt_template_id if prompt_binding else None
+
     # Note: wallet_address will be taken from source trade data during import
     # Each trade record contains its original wallet_address
 
@@ -382,7 +391,7 @@ async def execute_import(
 
             # Import decision log
             try:
-                new_log = _import_decision_log(db, account_id, log_data)
+                new_log = _import_decision_log(db, account_id, log_data, target_prompt_template_id)
                 imported_logs += 1
 
                 # Import related trades
@@ -427,11 +436,28 @@ async def execute_import(
     }
 
 
-def _import_decision_log(db: Session, account_id: int, log_data: dict) -> AIDecisionLog:
-    """Import a single decision log into the main database."""
+def _import_decision_log(
+    db: Session,
+    account_id: int,
+    log_data: dict,
+    target_prompt_template_id: Optional[int] = None
+) -> AIDecisionLog:
+    """Import a single decision log into the main database.
+
+    Args:
+        db: Database session
+        account_id: Target account ID
+        log_data: Decision log data from export
+        target_prompt_template_id: Target trader's bound prompt template ID for association
+    """
     # Parse datetime fields
     decision_time = parse(log_data["decision_time"])
     pnl_updated_at = parse(log_data["pnl_updated_at"]) if log_data.get("pnl_updated_at") else None
+
+    # Determine prompt_template_id: use source if available, otherwise use target's binding
+    prompt_template_id = log_data.get("prompt_template_id")
+    if prompt_template_id is None and target_prompt_template_id is not None:
+        prompt_template_id = target_prompt_template_id
 
     new_log = AIDecisionLog(
         account_id=account_id,
@@ -452,7 +478,10 @@ def _import_decision_log(db: Session, account_id: int, log_data: dict) -> AIDeci
         tp_order_id=log_data.get("tp_order_id"),
         sl_order_id=log_data.get("sl_order_id"),
         realized_pnl=log_data.get("realized_pnl"),
-        pnl_updated_at=pnl_updated_at
+        pnl_updated_at=pnl_updated_at,
+        # Trigger and prompt association
+        signal_trigger_id=log_data.get("signal_trigger_id"),
+        prompt_template_id=prompt_template_id,
     )
     db.add(new_log)
     db.flush()
