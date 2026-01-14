@@ -347,16 +347,19 @@ def _get_oi_data(
     db: Session, symbol: str, period: str, interval_ms: int, current_time_ms: int
 ) -> Optional[Dict[str, Any]]:
     """
-    Get Open Interest absolute value data.
+    Get Open Interest USD change data.
 
-    Returns current OI and last 5 values.
+    OI change measures the absolute USD value change in open interest over the period.
+    Formula: (current_OI - previous_OI) × mark_price
+    Returns current change and last 5 change values (in USD, can be positive or negative).
     """
     lookback_ms = interval_ms * 10
     start_time = current_time_ms - lookback_ms
 
     records = db.query(
         MarketAssetMetrics.timestamp,
-        MarketAssetMetrics.open_interest
+        MarketAssetMetrics.open_interest,
+        MarketAssetMetrics.mark_price
     ).filter(
         MarketAssetMetrics.symbol == symbol.upper(),
         MarketAssetMetrics.timestamp >= start_time,
@@ -364,47 +367,39 @@ def _get_oi_data(
     ).order_by(MarketAssetMetrics.timestamp).all()
 
     if not records:
-        from datetime import datetime
-        logger.warning(
-            f"OI insufficient data: symbol={symbol}, period={period}, "
-            f"query_range=[{datetime.utcfromtimestamp(start_time/1000)} - "
-            f"{datetime.utcfromtimestamp(current_time_ms/1000)}], records_found=0"
-        )
+        logger.warning(f"OI insufficient data: symbol={symbol}, period={period}, records_found=0")
         return None
 
     # Aggregate by period - take last value in each bucket
     buckets = {}
-    for ts, oi in records:
+    for ts, oi, price in records:
         bucket_ts = floor_timestamp(ts, interval_ms)
-        buckets[bucket_ts] = oi
+        buckets[bucket_ts] = (oi, price)
 
     sorted_times = sorted(buckets.keys())
-    if not sorted_times:
-        from datetime import datetime
-        logger.warning(
-            f"OI insufficient data: symbol={symbol}, period={period}, "
-            f"records_found={len(records)}, buckets=0"
-        )
+    if len(sorted_times) < 2:
+        logger.warning(f"OI insufficient data: symbol={symbol}, buckets={len(sorted_times)}, need_min=2")
         return None
 
-    # Get OI values
-    oi_values = [decimal_to_float(buckets[ts]) for ts in sorted_times]
-    oi_values = [v for v in oi_values if v is not None]
+    # Calculate OI USD changes: (current_OI - previous_OI) × mark_price
+    oi_changes = []
+    for i in range(1, len(sorted_times)):
+        curr_oi, curr_price = buckets[sorted_times[i]]
+        prev_oi, _ = buckets[sorted_times[i-1]]
+        if curr_oi and prev_oi and curr_price:
+            curr_oi_f = decimal_to_float(curr_oi)
+            prev_oi_f = decimal_to_float(prev_oi)
+            price_f = decimal_to_float(curr_price)
+            change_usd = (curr_oi_f - prev_oi_f) * price_f
+            oi_changes.append(round(change_usd, 2))
 
-    if not oi_values:
-        from datetime import datetime
-        logger.warning(
-            f"OI insufficient data: symbol={symbol}, period={period}, "
-            f"records_found={len(records)}, buckets={len(sorted_times)}, valid_values=0"
-        )
+    if not oi_changes:
+        logger.warning(f"OI insufficient data: symbol={symbol}, valid_changes=0")
         return None
-
-    current_oi = oi_values[-1]
-    last_5 = oi_values[-5:] if len(oi_values) >= 5 else oi_values
 
     return {
-        "current": current_oi,
-        "last_5": last_5,
+        "current": oi_changes[-1],
+        "last_5": oi_changes[-5:] if len(oi_changes) >= 5 else oi_changes,
         "period": period
     }
 

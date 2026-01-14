@@ -211,6 +211,13 @@ class SignalBacktestService:
                 db, signal_def, symbol, time_window, kline_min_ts, kline_max_ts
             )
 
+        # Handle oi USD change signal (special: calculates USD value change)
+        if metric == "oi":
+            logger.warning(f"[Backtest] Using oi USD change signal handler")
+            return self._find_oi_change_triggers_in_range(
+                db, signal_def, symbol, time_window, kline_min_ts, kline_max_ts
+            )
+
         if not all([metric, operator, threshold is not None]):
             logger.warning(f"[Backtest] Missing required fields: metric={metric}, "
                            f"operator={operator}, threshold={threshold}")
@@ -269,6 +276,88 @@ class SignalBacktestService:
                 triggers.append({
                     "timestamp": check_time,
                     "value": value,
+                    "threshold": threshold,
+                    "operator": operator,
+                })
+
+            was_active = condition_met
+
+        return triggers
+
+    def _find_oi_change_triggers_in_range(
+        self, db: Session, signal_def: Dict, symbol: str, time_window: str,
+        kline_min_ts: int = None, kline_max_ts: int = None
+    ) -> List[Dict]:
+        """
+        Find OI USD change signal triggers.
+
+        OI change measures the absolute USD value change in open interest.
+        Formula: (current_OI - previous_OI) × mark_price
+        Returns USD value (can be positive or negative).
+        """
+        from database.models import MarketAssetMetrics
+        from datetime import datetime
+
+        condition = signal_def.get("trigger_condition", {})
+        operator = condition.get("operator")
+        threshold = condition.get("threshold")
+
+        interval_ms = TIMEFRAME_MS.get(time_window, 300000)
+
+        # Load data for backtest range + one extra interval for first change calc
+        current_time_ms = kline_max_ts or int(datetime.utcnow().timestamp() * 1000)
+        start_time_ms = (kline_min_ts or current_time_ms - 24*60*60*1000) - interval_ms
+
+        records = db.query(
+            MarketAssetMetrics.timestamp,
+            MarketAssetMetrics.open_interest,
+            MarketAssetMetrics.mark_price
+        ).filter(
+            MarketAssetMetrics.symbol == symbol.upper(),
+            MarketAssetMetrics.timestamp >= start_time_ms,
+            MarketAssetMetrics.timestamp <= current_time_ms,
+            MarketAssetMetrics.open_interest.isnot(None),
+            MarketAssetMetrics.mark_price.isnot(None)
+        ).order_by(MarketAssetMetrics.timestamp).all()
+
+        if not records:
+            logger.warning(f"[Backtest] No OI data for {symbol}")
+            return []
+
+        # Aggregate by interval bucket
+        buckets = {}
+        for ts, oi, price in records:
+            bucket_ts = (ts // interval_ms) * interval_ms
+            buckets[bucket_ts] = (float(oi), float(price))
+
+        sorted_times = sorted(buckets.keys())
+        if len(sorted_times) < 2:
+            return []
+
+        logger.warning(f"[Backtest] Loaded {len(buckets)} OI buckets for USD change calc")
+
+        # Calculate USD changes and find triggers
+        triggers = []
+        was_active = False
+        backtest_start = kline_min_ts or sorted_times[1]
+
+        for i in range(1, len(sorted_times)):
+            check_time = sorted_times[i]
+            if check_time < backtest_start:
+                continue
+
+            curr_oi, curr_price = buckets[sorted_times[i]]
+            prev_oi, _ = buckets[sorted_times[i-1]]
+            change_usd = (curr_oi - prev_oi) * curr_price
+
+            # Evaluate condition
+            condition_met = self._evaluate_condition(change_usd, operator, threshold)
+
+            # Edge detection
+            if condition_met and not was_active:
+                triggers.append({
+                    "timestamp": check_time,
+                    "value": round(change_usd, 2),
                     "threshold": threshold,
                     "operator": operator,
                 })
@@ -736,29 +825,55 @@ class SignalBacktestService:
     def _compute_oi_buckets(
         self, db, symbol, interval_ms, start_time_ms, current_time_ms
     ) -> Dict[int, float]:
-        """Compute absolute OI for each bucket."""
+        """Compute OI USD change for each bucket.
+
+        OI change = (current_OI - previous_OI) × mark_price
+        Returns USD value (can be positive or negative).
+        """
         from services.market_flow_indicators import floor_timestamp
         from database.models import MarketAssetMetrics
 
+        # Load data for requested range + one extra interval for first change calc
+        query_start_ms = start_time_ms - interval_ms
+
         records = db.query(
             MarketAssetMetrics.timestamp,
-            MarketAssetMetrics.open_interest
+            MarketAssetMetrics.open_interest,
+            MarketAssetMetrics.mark_price
         ).filter(
             MarketAssetMetrics.symbol == symbol.upper(),
-            MarketAssetMetrics.timestamp >= start_time_ms,
+            MarketAssetMetrics.timestamp >= query_start_ms,
             MarketAssetMetrics.timestamp <= current_time_ms,
-            MarketAssetMetrics.open_interest.isnot(None)
+            MarketAssetMetrics.open_interest.isnot(None),
+            MarketAssetMetrics.mark_price.isnot(None)
         ).order_by(MarketAssetMetrics.timestamp).all()
 
         if not records:
             return {}
 
-        buckets = {}
-        for ts, oi in records:
+        # Build raw buckets with OI and price
+        raw_buckets = {}
+        for ts, oi, price in records:
             bucket_ts = floor_timestamp(ts, interval_ms)
-            buckets[bucket_ts] = float(oi)
+            raw_buckets[bucket_ts] = (float(oi), float(price))
 
-        return buckets
+        sorted_times = sorted(raw_buckets.keys())
+        if len(sorted_times) < 2:
+            return {}
+
+        # Calculate USD change for each bucket
+        change_buckets = {}
+        for i in range(1, len(sorted_times)):
+            ts = sorted_times[i]
+            if ts < start_time_ms:
+                continue
+
+            curr_oi, curr_price = raw_buckets[ts]
+            prev_oi, _ = raw_buckets[sorted_times[i-1]]
+            change_usd = (curr_oi - prev_oi) * curr_price
+            change_buckets[ts] = round(change_usd, 2)
+
+        return change_buckets
 
     def _find_taker_triggers(
         self, db: Session, signal_def: Dict, symbol: str, klines: List[Dict], time_window: str
@@ -1285,7 +1400,7 @@ class SignalBacktestService:
                 query = query.filter(MarketTradesAggregated.timestamp <= kline_max_ts)
             result = query.order_by(MarketTradesAggregated.timestamp).all()
 
-        elif metric == "oi_delta":
+        elif metric in ("oi_delta", "oi"):
             table_name = "market_asset_metrics"
             query = db.query(
                 MarketAssetMetrics.timestamp,
@@ -1397,6 +1512,8 @@ class SignalBacktestService:
             return self._calc_price_change_at_time(relevant_data, interval_ms)
         elif metric == "volatility":
             return self._calc_volatility_at_time(relevant_data, interval_ms)
+        elif metric == "oi":
+            return self._calc_oi_at_time(relevant_data, interval_ms)
         return None
 
     def _calc_cvd_at_time(self, data: List[tuple], interval_ms: int) -> Optional[float]:
@@ -1437,6 +1554,21 @@ class SignalBacktestService:
         if prev_oi and curr_oi and prev_oi != 0:
             return ((curr_oi - prev_oi) / prev_oi) * 100
         return None
+
+    def _calc_oi_at_time(self, data: List[tuple], interval_ms: int) -> Optional[float]:
+        """Calculate absolute OI value at a specific time."""
+        from services.market_flow_indicators import floor_timestamp
+
+        buckets = {}
+        for ts, oi in data:
+            bucket_ts = floor_timestamp(ts, interval_ms)
+            buckets[bucket_ts] = float(oi) if oi else None
+
+        if not buckets:
+            return None
+
+        sorted_times = sorted(buckets.keys())
+        return buckets[sorted_times[-1]]
 
     def _calc_imbalance_at_time(self, data: List[tuple], interval_ms: int) -> Optional[float]:
         """Calculate order book imbalance at a specific time."""

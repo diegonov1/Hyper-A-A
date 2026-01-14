@@ -399,34 +399,59 @@ class SignalAnalysisService:
         return values, min_ts, max_ts
 
     def _get_oi_history(self, db, symbol, interval_ms, start_time_ms, current_time_ms):
-        """Get absolute OI history. Aligned with K-line OI indicator (raw value, no conversion)."""
+        """Get OI USD change history.
+
+        OI change = (current_OI - previous_OI) × mark_price
+        Returns USD value (can be positive or negative).
+        """
         from services.market_flow_indicators import floor_timestamp
         from database.models import MarketAssetMetrics
 
+        # Load data for requested range + one extra interval for first change calc
+        query_start_ms = start_time_ms - interval_ms
+
         records = db.query(
             MarketAssetMetrics.timestamp,
-            MarketAssetMetrics.open_interest
+            MarketAssetMetrics.open_interest,
+            MarketAssetMetrics.mark_price
         ).filter(
             MarketAssetMetrics.symbol == symbol.upper(),
-            MarketAssetMetrics.timestamp >= start_time_ms,
+            MarketAssetMetrics.timestamp >= query_start_ms,
             MarketAssetMetrics.timestamp <= current_time_ms,
-            MarketAssetMetrics.open_interest.isnot(None)
+            MarketAssetMetrics.open_interest.isnot(None),
+            MarketAssetMetrics.mark_price.isnot(None)
         ).order_by(MarketAssetMetrics.timestamp).all()
 
         if not records:
             return [], None, None
 
-        buckets = {}
-        for ts, oi in records:
+        # Build raw buckets with OI and price
+        raw_buckets = {}
+        for ts, oi, price in records:
             bucket_ts = floor_timestamp(ts, interval_ms)
-            buckets[bucket_ts] = float(oi)  # Raw value, no conversion
+            raw_buckets[bucket_ts] = (float(oi), float(price))
 
-        sorted_times = sorted(buckets.keys())
-        values = [buckets[ts] for ts in sorted_times]
+        sorted_times = sorted(raw_buckets.keys())
+        if len(sorted_times) < 2:
+            return [], None, None
 
-        min_ts = sorted_times[0] if sorted_times else None
-        max_ts = sorted_times[-1] if sorted_times else None
-        return values, min_ts, max_ts
+        # Calculate USD change for each bucket
+        change_values = []
+        result_times = []
+        for i in range(1, len(sorted_times)):
+            ts = sorted_times[i]
+            if ts < start_time_ms:
+                continue
+
+            curr_oi, curr_price = raw_buckets[ts]
+            prev_oi, _ = raw_buckets[sorted_times[i-1]]
+            change_usd = (curr_oi - prev_oi) * curr_price
+            change_values.append(round(change_usd, 2))
+            result_times.append(ts)
+
+        min_ts = result_times[0] if result_times else None
+        max_ts = result_times[-1] if result_times else None
+        return change_values, min_ts, max_ts
 
     def _get_price_change_history(self, db, symbol, interval_ms, start_time_ms, current_time_ms):
         """Get price change percentage history."""
@@ -536,6 +561,7 @@ class SignalAnalysisService:
     def _generate_suggestions(self, stats: Dict[str, Any], metric: str) -> Dict[str, Any]:
         """Generate threshold suggestions based on statistics."""
         import math
+
         p = stats["abs_percentiles"]
 
         suggestions = {
@@ -561,6 +587,15 @@ class SignalAnalysisService:
                 multiplier = round(math.exp(abs(log_val)), 2)
                 suggestions[key]["multiplier"] = multiplier
                 suggestions[key]["description"] += f" ({multiplier}x)"
+
+        # For OI (USD change), format large numbers for readability
+        if metric == "oi":
+            for key in suggestions:
+                val = suggestions[key]["threshold"]
+                if abs(val) >= 1_000_000_000:
+                    suggestions[key]["description"] += f" (${val/1_000_000_000:.1f}B)"
+                elif abs(val) >= 1_000_000:
+                    suggestions[key]["description"] += f" (${val/1_000_000:.1f}M)"
 
         return suggestions
 
