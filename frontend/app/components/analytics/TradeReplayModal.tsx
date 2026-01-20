@@ -701,18 +701,23 @@ Trade #${tradeData.trade.id} ${tradeData.trade.symbol}:
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
-      <div className="p-3 border-t flex gap-2 flex-shrink-0">
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-          placeholder={t('attribution.replay.typeQuestion', 'Type a question...')}
-          disabled={loading || !selectedAccountId}
-          className="text-sm"
-        />
-        <Button size="icon" onClick={sendMessage} disabled={loading || !input.trim() || !selectedAccountId}>
-          <Send className="h-4 w-4" />
-        </Button>
+      <div className="p-3 border-t flex-shrink-0">
+        <div className="flex gap-2">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && (e.ctrlKey || e.metaKey) && sendMessage()}
+            placeholder={t('attribution.replay.typeQuestion', 'Type a question...')}
+            disabled={loading || !selectedAccountId}
+            className="text-sm"
+          />
+          <Button size="icon" onClick={sendMessage} disabled={loading || !input.trim() || !selectedAccountId}>
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          {t('common.keyboardHintCtrlEnter', 'Press Ctrl+Enter (Cmd+Enter on Mac) to send')}
+        </p>
       </div>
     </div>
   )

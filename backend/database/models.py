@@ -650,6 +650,13 @@ class AiPromptMessage(Base):
     # For assistant messages: extracted prompt from ```prompt``` code block
     prompt_result = Column(Text, nullable=True)
 
+    # Reasoning and tool call logs (aligned with AiProgramMessage)
+    reasoning_snapshot = Column(Text, nullable=True)  # AI reasoning process (thinking)
+    tool_calls_log = Column(Text, nullable=True)  # JSON: tool calls and results
+
+    # Completion status for retry/continue functionality
+    is_complete = Column(Boolean, default=True)  # False = interrupted, can retry
+
     created_at = Column(TIMESTAMP, server_default=func.current_timestamp(), index=True)
 
     # Relationships

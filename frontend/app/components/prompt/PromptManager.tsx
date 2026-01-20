@@ -419,6 +419,9 @@ export default function PromptManager() {
                   >
                     📖 {t('prompt.variablesGuide', 'Variables Guide')}
                   </Button>
+                  <span className="text-xs text-muted-foreground">
+                    {t('prompt.useCaseHint')}
+                  </span>
                 </div>
                 <div className="flex gap-2">
                   <Button

@@ -598,6 +598,9 @@ export default function ProgramTrader() {
                   <BookOpen className="h-4 w-4 mr-1" />
                   {t('programTrader.devGuide', 'Dev Guide')}
                 </Button>
+                <span className="text-xs text-muted-foreground">
+                  {t('programTrader.useCaseHint')}
+                </span>
               </div>
               <div className="flex gap-2">
                 {/* New Button - hidden when creating */}

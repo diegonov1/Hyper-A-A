@@ -33,7 +33,8 @@
     "loadMore": "加载更多",
     "success": "成功",
     "failed": "失败",
-    "error": "错误"
+    "error": "错误",
+    "keyboardHintCtrlEnter": "按 Ctrl+Enter（Mac 上为 Cmd+Enter）发送"
   },
   "regime": {
     "noConfig": "未找到配置",
@@ -113,7 +114,18 @@
     "copied": "提示词已复制到剪贴板",
     "copyFailed": "复制到剪贴板失败",
     "copy": "复制",
-    "applyToEditor": "应用到编辑器"
+    "applyToEditor": "应用到编辑器",
+    "connecting": "连接中...",
+    "thinking": "思考中...",
+    "toolRound": "工具轮次",
+    "retrying": "重试中",
+    "calling": "调用",
+    "generating": "生成中...",
+    "connectionLost": "连接中断，正在重新加载消息...",
+    "toolCallsDetail": "工具调用 ({{count}})",
+    "interruptedAt": "在第{{round}}轮中断",
+    "continueMessage": "请继续",
+    "continueButton": "继续"
   },
   "sidebar": {
     "dashboard": "数据看板",
@@ -588,6 +600,7 @@
   "prompt": {
     "templateEditor": "提示词模板编辑器",
     "variablesGuide": "变量指南",
+    "useCaseHint": "适合需要 AI 理解市场的策略（如舆情、综合判断）",
     "new": "新建",
     "copy": "复制",
     "template": "模板",
@@ -1141,6 +1154,7 @@
     "suggestions": "建议",
     "marketData": "市场数据",
     "devGuide": "开发指南",
+    "useCaseHint": "适合固定规则的策略（如技术指标触发）",
     "devGuideTitle": "程序开发指南",
     "devGuideDesc": "编写交易策略可用的 API 和数据结构",
     "loadDevGuideFailed": "加载开发指南失败",
@@ -1180,6 +1194,7 @@
       "connecting": "连接中...",
       "thinking": "思考中...",
       "toolRound": "工具调用轮次",
+      "retrying": "正在重试...",
       "calling": "调用",
       "toolCalls": "{{count}} 次工具调用",
       "saveSuggestion": "代码已准备好保存",

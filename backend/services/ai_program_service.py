@@ -7,6 +7,7 @@ Supports Function Calling for AI to query API docs, validate code, and test run.
 
 import json
 import logging
+import random
 import re
 import time
 import traceback
@@ -20,6 +21,29 @@ from services.ai_decision_service import build_chat_completion_endpoints, detect
 from services.system_logger import system_logger
 
 logger = logging.getLogger(__name__)
+
+# Retry configuration for API calls
+API_MAX_RETRIES = 5
+API_BASE_DELAY = 1.0  # seconds
+API_MAX_DELAY = 16.0  # seconds
+RETRYABLE_STATUS_CODES = {502, 503, 504, 429}
+
+
+def _should_retry_api(status_code: Optional[int], error: Optional[str]) -> bool:
+    """Check if API error is retryable."""
+    if status_code and status_code in RETRYABLE_STATUS_CODES:
+        return True
+    if error and any(x in error.lower() for x in ['timeout', 'connection', 'reset', 'eof']):
+        return True
+    return False
+
+
+def _get_retry_delay(attempt: int) -> float:
+    """Calculate retry delay with exponential backoff and jitter."""
+    delay = min(API_BASE_DELAY * (2 ** attempt), API_MAX_DELAY)
+    jitter = random.uniform(0, delay * 0.1)
+    return delay + jitter
+
 
 # System prompt for AI program coding
 PROGRAM_SYSTEM_PROMPT = """You are an expert Python developer for cryptocurrency trading programs.
@@ -1361,20 +1385,46 @@ You are creating a new program. Start fresh and design the strategy based on use
                     else:
                         content_summary = f"str({len(str(content))} chars)"
                     logger.warning(f"[AI Program {request_id}]   msg[{i}]: role={role}, content={content_summary}")
+
+            # API call with retry logic
             response = None
             last_error = None
-            for endpoint in endpoints:
-                try:
-                    logger.info(f"[AI Program {request_id}] Trying endpoint: {endpoint}")
-                    response = requests.post(endpoint, json=payload, headers=headers, timeout=120)
-                    logger.info(f"[AI Program {request_id}] Response status: {response.status_code}")
-                    if response.status_code != 200:
-                        logger.warning(f"[AI Program {request_id}] Non-200 response from {endpoint}: {response.status_code} - {response.text[:500]}")
-                    if response.status_code == 200:
-                        break
-                except Exception as e:
-                    last_error = str(e)
-                    logger.warning(f"[AI Program {request_id}] Endpoint {endpoint} error: {e}")
+            last_status_code = None
+
+            for retry_attempt in range(API_MAX_RETRIES):
+                response = None
+                last_error = None
+
+                for endpoint in endpoints:
+                    try:
+                        logger.info(f"[AI Program {request_id}] Trying endpoint: {endpoint}" +
+                                   (f" (retry {retry_attempt + 1}/{API_MAX_RETRIES})" if retry_attempt > 0 else ""))
+                        response = requests.post(endpoint, json=payload, headers=headers, timeout=120)
+                        logger.info(f"[AI Program {request_id}] Response status: {response.status_code}")
+                        if response.status_code != 200:
+                            logger.warning(f"[AI Program {request_id}] Non-200 response from {endpoint}: {response.status_code} - {response.text[:500]}")
+                            last_status_code = response.status_code
+                        if response.status_code == 200:
+                            break
+                    except Exception as e:
+                        last_error = str(e)
+                        logger.warning(f"[AI Program {request_id}] Endpoint {endpoint} error: {e}")
+
+                # Check if successful
+                if response and response.status_code == 200:
+                    break
+
+                # Check if should retry
+                if not _should_retry_api(last_status_code, last_error):
+                    logger.info(f"[AI Program {request_id}] Error not retryable, giving up")
+                    break
+
+                # Check if more retries available
+                if retry_attempt < API_MAX_RETRIES - 1:
+                    delay = _get_retry_delay(retry_attempt)
+                    logger.warning(f"[AI Program {request_id}] Retrying in {delay:.1f}s (attempt {retry_attempt + 2}/{API_MAX_RETRIES})")
+                    yield f"data: {json.dumps({'type': 'retry', 'attempt': retry_attempt + 2, 'max_retries': API_MAX_RETRIES})}\n\n"
+                    time.sleep(delay)
 
             if not response or response.status_code != 200:
                 error_detail = f"No response (last_error: {last_error})" if last_error else "No response"

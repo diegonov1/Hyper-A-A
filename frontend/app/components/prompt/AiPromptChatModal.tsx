@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import remarkGfm from 'remark-gfm'
 import { toast } from 'react-hot-toast'
 import {
   Dialog,
@@ -23,11 +22,31 @@ import { TradingAccount } from '@/lib/api'
 import PacmanLoader from '@/components/ui/pacman-loader'
 import { copyToClipboard } from '@/lib/utils'
 
+interface ToolCallEntry {
+  type: 'tool_call' | 'tool_result' | 'reasoning'
+  name?: string
+  args?: Record<string, unknown>
+  result?: string
+  content?: string
+}
+
+interface ToolCallLogEntry {
+  tool: string
+  args: Record<string, unknown>
+  result: string
+}
+
 interface Message {
   id: number
   role: 'user' | 'assistant'
   content: string
   promptResult?: string | null
+  isStreaming?: boolean
+  isInterrupted?: boolean
+  interruptedRound?: number
+  statusText?: string
+  toolCalls?: ToolCallEntry[]
+  toolCallsLog?: ToolCallLogEntry[]
 }
 
 interface Conversation {
@@ -116,22 +135,24 @@ export default function AiPromptChatModal({
       const response = await fetch(`/api/prompts/ai-conversations/${conversationId}/messages`)
       if (response.ok) {
         const data = await response.json()
-        setMessages(data.messages || [])
+        // Map API fields to frontend format
+        const mappedMessages = (data.messages || []).map((m: Message & { is_complete?: boolean; tool_calls_log?: ToolCallLogEntry[] }) => ({
+          ...m,
+          isInterrupted: m.role === 'assistant' && m.is_complete === false,
+          toolCallsLog: m.tool_calls_log || []
+        }))
+        setMessages(mappedMessages)
 
         // Extract ALL prompts from assistant messages (for version management)
         const prompts: Array<{id: number, content: string}> = []
-        data.messages
+        mappedMessages
           .filter((m: Message) => m.role === 'assistant' && m.promptResult)
           .forEach((m: Message) => {
             if (m.promptResult) {
-              prompts.push({
-                id: m.id,
-                content: m.promptResult
-              })
+              prompts.push({ id: m.id, content: m.promptResult })
             }
           })
         setExtractedPrompts(prompts)
-        // Select the latest version by default
         if (prompts.length > 0) {
           setSelectedPromptIndex(prompts.length - 1)
         }
@@ -142,10 +163,7 @@ export default function AiPromptChatModal({
   }
 
   const sendMessage = async () => {
-    if (!userInput.trim() || !selectedAccountId) {
-      return
-    }
-
+    if (!userInput.trim() || !selectedAccountId) return
     if (!selectedAccountId) {
       toast.error(t('aiPrompt.selectTraderFirst', 'Please select an AI Trader first'))
       return
@@ -155,16 +173,23 @@ export default function AiPromptChatModal({
     setUserInput('')
     setLoading(true)
 
-    // Optimistically add user message to UI
-    const tempUserMsg: Message = {
-      id: Date.now(),
-      role: 'user',
-      content: userMessage,
+    const tempUserMsgId = Date.now()
+    const tempAssistantMsgId = tempUserMsgId + 1
+    const tempUserMsg: Message = { id: tempUserMsgId, role: 'user', content: userMessage }
+    const tempAssistantMsg: Message = {
+      id: tempAssistantMsgId,
+      role: 'assistant',
+      content: '',
+      isStreaming: true,
+      statusText: t('aiPrompt.connecting', 'Connecting...'),
+      toolCalls: [],
     }
-    setMessages(prev => [...prev, tempUserMsg])
+    setMessages(prev => [...prev, tempUserMsg, tempAssistantMsg])
+
+    let finalConversationId: number | null = null
 
     try {
-      const response = await fetch('/api/prompts/ai-chat', {
+      const response = await fetch('/api/prompts/ai-chat-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -180,50 +205,167 @@ export default function AiPromptChatModal({
           onOpenChange(false)
           return
         }
-        throw new Error('Failed to send message')
+        throw new Error('Failed to connect')
       }
 
-      const data = await response.json()
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error('No reader')
 
-      if (data.success) {
-        // Update conversation ID if this was a new conversation
-        if (!currentConversationId && data.conversationId) {
-          setCurrentConversationId(data.conversationId)
-          loadConversations() // Refresh conversation list
-        }
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let finalContent = ''
+      let finalPromptResult: string | null = null
+      let hasError = false
 
-        // Add assistant message
-        const assistantMsg: Message = {
-          id: data.messageId,
-          role: 'assistant',
-          content: data.content,
-          promptResult: data.promptResult,
-        }
-        setMessages(prev => [...prev.filter(m => m.id !== tempUserMsg.id), tempUserMsg, assistantMsg])
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
 
-        // Add new prompt to version list if available
-        if (data.promptResult) {
-          setExtractedPrompts(prev => {
-            const newPrompts = [...prev, {
-              id: data.messageId,
-              content: data.promptResult
-            }]
-            // Select the newly added prompt (latest version) - use the new array length
-            setSelectedPromptIndex(newPrompts.length - 1)
-            return newPrompts
-          })
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              handleSSEEvent(data, tempAssistantMsgId, (updates) => {
+                if (updates.content !== undefined) finalContent = updates.content
+                if (updates.promptResult !== undefined) finalPromptResult = updates.promptResult
+                if (updates.conversationId) finalConversationId = updates.conversationId
+                if (updates.error) hasError = true
+              })
+            } catch {}
+          }
         }
-      } else {
-        toast.error(data.error || t('aiPrompt.generateFailed', 'Failed to generate response'))
-        // Remove optimistic user message on error
-        setMessages(prev => prev.filter(m => m.id !== tempUserMsg.id))
+      }
+
+      // Finalize the message
+      setMessages(prev => prev.map(m =>
+        m.id === tempAssistantMsgId
+          ? { ...m, content: finalContent, promptResult: finalPromptResult, isStreaming: false, statusText: undefined }
+          : m
+      ))
+
+      // Add new prompt to version list if available
+      if (finalPromptResult) {
+        setExtractedPrompts(prev => {
+          const newPrompts = [...prev, { id: tempAssistantMsgId, content: finalPromptResult! }]
+          setSelectedPromptIndex(newPrompts.length - 1)
+          return newPrompts
+        })
+      }
+
+      // Set conversation ID if no error
+      if (!hasError && !currentConversationId && finalConversationId) {
+        setCurrentConversationId(finalConversationId)
+        loadConversations()
       }
     } catch (error) {
-      console.error('Error sending message:', error)
-      toast.error(t('aiPrompt.sendFailed', 'Failed to send message'))
-      setMessages(prev => prev.filter(m => m.id !== tempUserMsg.id))
+      console.error('Chat error:', error)
+      const convId = finalConversationId || currentConversationId
+      if (convId) {
+        toast.error(t('aiPrompt.connectionLost', 'Connection lost, reloading messages...'))
+        await loadMessages(convId)
+        if (!currentConversationId && finalConversationId) {
+          setCurrentConversationId(finalConversationId)
+          loadConversations()
+        }
+      } else {
+        toast.error(t('aiPrompt.sendFailed', 'Failed to send message'))
+        setMessages(prev => prev.filter(m => m.id !== tempUserMsgId && m.id !== tempAssistantMsgId))
+      }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSSEEvent = (
+    data: Record<string, unknown>,
+    msgId: number,
+    onUpdate: (updates: { content?: string; promptResult?: string | null; conversationId?: number; error?: boolean }) => void
+  ) => {
+    const eventType = data.type as string
+
+    if (eventType === 'conversation_created') {
+      onUpdate({ conversationId: data.conversation_id as number })
+      setMessages(prev => prev.map(m =>
+        m.id === msgId ? { ...m, statusText: t('aiPrompt.thinking', 'Thinking...') } : m
+      ))
+    } else if (eventType === 'tool_round') {
+      setMessages(prev => prev.map(m =>
+        m.id === msgId ? { ...m, statusText: `${t('aiPrompt.toolRound', 'Tool round')} ${data.round}/${data.max}` } : m
+      ))
+    } else if (eventType === 'retry') {
+      setMessages(prev => prev.map(m =>
+        m.id === msgId ? { ...m, statusText: `${t('aiPrompt.retrying', 'Retrying')} (${data.attempt}/${data.max_retries})` } : m
+      ))
+    } else if (eventType === 'reasoning') {
+      setMessages(prev => prev.map(m =>
+        m.id === msgId ? {
+          ...m,
+          toolCalls: [...(m.toolCalls || []), { type: 'reasoning', content: data.content as string }],
+        } : m
+      ))
+    } else if (eventType === 'tool_call') {
+      setMessages(prev => prev.map(m =>
+        m.id === msgId ? {
+          ...m,
+          statusText: `${t('aiPrompt.calling', 'Calling')} ${data.name}...`,
+          toolCalls: [...(m.toolCalls || []), {
+            type: 'tool_call',
+            name: data.name as string,
+            args: data.args as Record<string, unknown>,
+          }],
+        } : m
+      ))
+    } else if (eventType === 'tool_result') {
+      setMessages(prev => prev.map(m =>
+        m.id === msgId ? {
+          ...m,
+          toolCalls: [...(m.toolCalls || []), {
+            type: 'tool_result',
+            name: data.name as string,
+            result: data.result as string,
+          }],
+        } : m
+      ))
+    } else if (eventType === 'suggest_apply') {
+      const promptResult = data.prompt as string
+      onUpdate({ promptResult })
+      setMessages(prev => prev.map(m =>
+        m.id === msgId ? { ...m, promptResult } : m
+      ))
+    } else if (eventType === 'content') {
+      const content = data.content as string
+      onUpdate({ content })
+      setMessages(prev => prev.map(m =>
+        m.id === msgId ? { ...m, content, statusText: '' } : m
+      ))
+    } else if (eventType === 'done') {
+      const content = data.content as string
+      if (content) onUpdate({ content })
+      if (data.conversation_id) onUpdate({ conversationId: data.conversation_id as number })
+      if (data.prompt_result) onUpdate({ promptResult: data.prompt_result as string })
+      setMessages(prev => prev.map(m =>
+        m.id === msgId ? { ...m, isStreaming: false } : m
+      ))
+    } else if (eventType === 'error') {
+      onUpdate({ error: true })
+      setMessages(prev => prev.map(m =>
+        m.id === msgId ? { ...m, content: data.content as string, isStreaming: false } : m
+      ))
+    } else if (eventType === 'interrupted') {
+      onUpdate({ conversationId: data.conversation_id as number | undefined })
+      setMessages(prev => prev.map(m =>
+        m.id === msgId ? {
+          ...m,
+          isStreaming: false,
+          isInterrupted: true,
+          interruptedRound: data.round as number,
+          statusText: ''
+        } : m
+      ))
     }
   }
 
@@ -342,33 +484,99 @@ export default function AiPromptChatModal({
                           : 'bg-muted'
                       }`}
                     >
-                      <div className="text-xs font-semibold mb-1 opacity-70">
+                      <div className={`text-xs font-semibold mb-1 ${msg.role === 'user' ? 'text-primary-foreground/70' : 'opacity-70'}`}>
                         {msg.role === 'user' ? t('aiPrompt.you', 'You') : t('aiPrompt.aiAssistant', 'AI Assistant')}
+                        {msg.isStreaming && msg.statusText && (
+                          <span className="ml-2 text-primary animate-pulse">({msg.statusText})</span>
+                        )}
                       </div>
+                      {/* Tool calls progress during streaming */}
+                      {msg.isStreaming && msg.toolCalls && msg.toolCalls.length > 0 && (
+                        <div className="mb-2 text-xs bg-background/50 rounded p-2 max-h-32 overflow-y-auto">
+                          {msg.toolCalls.slice(-5).map((entry, idx) => (
+                            <div key={idx} className="mb-1 last:mb-0">
+                              {entry.type === 'tool_call' && (
+                                <span className="text-blue-500">→ {entry.name}</span>
+                              )}
+                              {entry.type === 'tool_result' && (
+                                <span className="text-green-500">← {entry.name}: done</span>
+                              )}
+                              {entry.type === 'reasoning' && (
+                                <span className="text-gray-500 italic">{(entry.content || '').slice(0, 100)}...</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <div className={`text-sm prose prose-sm max-w-none ${msg.role === 'user' ? 'prose-invert' : 'dark:prose-invert'}`}>
-                        <ReactMarkdown
-                          components={{
-                            code: ({ node, inline, className, children, ...props }) => {
-                              // Don't render ```prompt blocks in chat (they go to artifact panel)
-                              const match = /language-(\w+)/.exec(className || '')
-                              if (!inline && match?.[1] === 'prompt') {
-                                return null
-                              }
-                              return inline ? (
-                                <code className={className} {...props}>
-                                  {children}
-                                </code>
-                              ) : (
-                                <code className={className} {...props}>
-                                  {children}
-                                </code>
-                              )
-                            },
-                          }}
-                        >
-                          {msg.content}
-                        </ReactMarkdown>
+                        {msg.content ? (
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              pre: ({ node, children, ...props }) => {
+                                // Check if this pre contains a prompt code block
+                                const child = node?.children?.[0] as { properties?: { className?: string[] } } | undefined
+                                const className = child?.properties?.className || []
+                                if (className.includes('language-prompt')) {
+                                  return null
+                                }
+                                return <pre {...props}>{children}</pre>
+                              },
+                              code: ({ node, inline, className, children, ...props }) => {
+                                const match = /language-(\w+)/.exec(className || '')
+                                if (!inline && match?.[1] === 'prompt') {
+                                  return null
+                                }
+                                return <code className={className} {...props}>{children}</code>
+                              },
+                            }}
+                          >
+                            {msg.content}
+                          </ReactMarkdown>
+                        ) : msg.isStreaming ? (
+                          <span className="text-muted-foreground italic">{t('aiPrompt.generating', 'Generating...')}</span>
+                        ) : null}
                       </div>
+                      {/* Tool calls log for loaded messages */}
+                      {!msg.isStreaming && msg.toolCallsLog && msg.toolCallsLog.length > 0 && (
+                        <details className="mt-3 text-xs border rounded-md">
+                          <summary className="px-3 py-2 cursor-pointer bg-muted/50 hover:bg-muted font-medium">
+                            {t('aiPrompt.toolCallsDetail', 'Tool calls ({{count}})').replace('{{count}}', msg.toolCallsLog.length.toString())}
+                          </summary>
+                          <div className="p-3 space-y-3 max-h-96 overflow-y-auto">
+                            {msg.toolCallsLog.map((entry, idx) => (
+                              <div key={idx} className="border-b pb-2 last:border-b-0 last:pb-0">
+                                <div className="font-medium text-blue-600 dark:text-blue-400 mb-1">
+                                  Round {idx + 1}: {entry.tool}
+                                </div>
+                                <div className="ml-2 text-green-600 dark:text-green-400">
+                                  Result: {entry.result.length > 200 ? entry.result.slice(0, 200) + '...' : entry.result}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                      {/* Continue button for interrupted messages */}
+                      {msg.isInterrupted && !loading && (
+                        <div className="mt-3 pt-3 border-t border-border/50">
+                          <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 mb-2">
+                            <span>⚠️</span>
+                            <span>{t('aiPrompt.interruptedAt', 'Interrupted at round {{round}}').replace('{{round}}', String(msg.interruptedRound || '?'))}</span>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setUserInput(t('aiPrompt.continueMessage', 'Please continue'))
+                              setTimeout(() => sendMessage(), 100)
+                            }}
+                            className="text-xs"
+                          >
+                            {t('aiPrompt.continueButton', 'Continue')}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -383,7 +591,7 @@ export default function AiPromptChatModal({
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                       e.preventDefault()
                       sendMessage()
                     }
@@ -401,7 +609,7 @@ export default function AiPromptChatModal({
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                {t('aiPrompt.keyboardHint', 'Press Enter to send, Shift+Enter for new line')}
+                {t('common.keyboardHintCtrlEnter', 'Press Ctrl+Enter (Cmd+Enter on Mac) to send')}
               </p>
             </div>
           </div>
@@ -455,18 +663,10 @@ export default function AiPromptChatModal({
                       {selectedPromptIndex === extractedPrompts.length - 1 && ` (${t('aiPrompt.latest', 'Latest')})`}
                     </div>
                   )}
-                  <div className="rounded-lg overflow-hidden border">
-                    <SyntaxHighlighter
-                      language="markdown"
-                      style={vscDarkPlus}
-                      customStyle={{
-                        margin: 0,
-                        fontSize: '0.875rem',
-                        lineHeight: '1.5',
-                      }}
-                    >
+                  <div className="rounded-lg overflow-hidden border bg-muted/50 p-4">
+                    <pre className="text-sm whitespace-pre-wrap break-words font-mono">
                       {extractedPrompts[selectedPromptIndex]?.content || ''}
-                    </SyntaxHighlighter>
+                    </pre>
                   </div>
                 </div>
               ) : (

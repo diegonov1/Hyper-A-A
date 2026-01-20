@@ -30,7 +30,8 @@
     "details": "Details",
     "more": "more",
     "saving": "Saving...",
-    "loadMore": "Load More"
+    "loadMore": "Load More",
+    "keyboardHintCtrlEnter": "Press Ctrl+Enter (Cmd+Enter on Mac) to send"
   },
   "regime": {
     "noConfig": "No configuration found",
@@ -110,7 +111,18 @@
     "copied": "Prompt copied to clipboard",
     "copyFailed": "Failed to copy to clipboard",
     "copy": "Copy",
-    "applyToEditor": "Apply to Editor"
+    "applyToEditor": "Apply to Editor",
+    "connecting": "Connecting...",
+    "thinking": "Thinking...",
+    "toolRound": "Tool round",
+    "retrying": "Retrying",
+    "calling": "Calling",
+    "generating": "Generating...",
+    "connectionLost": "Connection lost, reloading messages...",
+    "toolCallsDetail": "Tool calls ({{count}})",
+    "interruptedAt": "Interrupted at round {{round}}",
+    "continueMessage": "Please continue",
+    "continueButton": "Continue"
   },
   "sidebar": {
     "dashboard": "Dashboard",
@@ -569,6 +581,7 @@
   "prompt": {
     "templateEditor": "Prompt Template Editor",
     "variablesGuide": "Variables Guide",
+    "useCaseHint": "For strategies needing AI analysis (news, sentiment)",
     "new": "New",
     "copy": "Copy",
     "template": "Template",
@@ -1122,6 +1135,7 @@
     "suggestions": "Suggestions",
     "marketData": "Market",
     "devGuide": "Dev Guide",
+    "useCaseHint": "For fixed-rule strategies (technical indicators)",
     "devGuideTitle": "Program Development Guide",
     "devGuideDesc": "Available APIs and data structures for writing trading strategies",
     "loadDevGuideFailed": "Failed to load development guide",
@@ -1161,6 +1175,7 @@
       "connecting": "Connecting...",
       "thinking": "Thinking...",
       "toolRound": "Tool Round",
+      "retrying": "Retrying...",
       "calling": "Calling",
       "toolCalls": "{{count}} tool calls",
       "saveSuggestion": "Code Ready to Save",

@@ -476,8 +476,10 @@ def preview_prompt(
 # ============================================================================
 
 from pydantic import BaseModel, Field
+from fastapi.responses import StreamingResponse
 from services.ai_prompt_generation_service import (
     generate_prompt_with_ai,
+    generate_prompt_with_ai_stream,
     get_conversation_history,
     get_conversation_messages
 )
@@ -546,6 +548,48 @@ def ai_chat(
         content=result.get("content"),
         prompt_result=result.get("prompt_result"),
         error=result.get("error")
+    )
+
+
+@router.post("/ai-chat-stream")
+def ai_chat_stream(
+    request: AiChatRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Send a message to AI prompt generation assistant with SSE streaming.
+
+    Returns Server-Sent Events with tool calling progress and final response.
+    Premium feature - requires active subscription.
+    """
+    # Get user (default user for now)
+    user = db.query(User).filter(User.username == "default").first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Get AI Trader account
+    account = db.query(Account).filter(Account.id == request.account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="AI Trader not found")
+
+    if account.account_type != "AI":
+        raise HTTPException(status_code=400, detail="Selected account is not an AI Trader")
+
+    # Return SSE stream
+    return StreamingResponse(
+        generate_prompt_with_ai_stream(
+            db=db,
+            account=account,
+            user_message=request.user_message,
+            conversation_id=request.conversation_id,
+            user_id=user.id
+        ),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
     )
 
 

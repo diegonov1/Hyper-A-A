@@ -296,6 +296,10 @@ export default function AiProgramChatModal({
       setMessages(prev => prev.map(m =>
         m.id === msgId ? { ...m, statusText: `${t('program.aiChat.toolRound')} ${data.round}/${data.max}` } : m
       ))
+    } else if (eventType === 'retry') {
+      setMessages(prev => prev.map(m =>
+        m.id === msgId ? { ...m, statusText: `${t('program.aiChat.retrying')} (${data.attempt}/${data.max_retries})` } : m
+      ))
     } else if (eventType === 'reasoning') {
       setMessages(prev => prev.map(m =>
         m.id === msgId ? {
@@ -611,7 +615,7 @@ function ChatArea({
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault()
                 sendMessage()
               }
@@ -624,6 +628,9 @@ function ChatArea({
             {loading ? t('program.aiChat.sending') : t('program.aiChat.send')}
           </Button>
         </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          {t('common.keyboardHintCtrlEnter', 'Press Ctrl+Enter (Cmd+Enter on Mac) to send')}
+        </p>
       </div>
     </div>
   )
