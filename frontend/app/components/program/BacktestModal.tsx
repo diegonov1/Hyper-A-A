@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Play, Loader2, Calculator, List, ChevronDown, ChevronRight, History, X } from 'lucide-react'
+import { Play, Loader2, Calculator, List, ChevronDown, ChevronRight, History, X, Copy, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -161,6 +161,7 @@ export function BacktestModal({ open, onOpenChange, binding }: BacktestModalProp
   const [showDetails, setShowDetails] = useState(false)
   const [triggerLogs, setTriggerLogs] = useState<TriggerLog[]>([])
   const [loadingDetails, setLoadingDetails] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [detailsOffset, setDetailsOffset] = useState(0)
   const [detailsTotal, setDetailsTotal] = useState(0)
 
@@ -448,7 +449,7 @@ export function BacktestModal({ open, onOpenChange, binding }: BacktestModalProp
     if (!backtestId) return
 
     const newOffset = detailsOffset + 100
-    setLoadingDetails(true)
+    setLoadingMore(true)
     try {
       const res = await fetch(`/api/programs/backtest/${backtestId}/triggers?offset=${newOffset}&limit=100`)
       if (res.ok) {
@@ -459,7 +460,7 @@ export function BacktestModal({ open, onOpenChange, binding }: BacktestModalProp
     } catch (e) {
       console.error('Failed to load more details:', e)
     } finally {
-      setLoadingDetails(false)
+      setLoadingMore(false)
     }
   }
 
@@ -793,10 +794,10 @@ export function BacktestModal({ open, onOpenChange, binding }: BacktestModalProp
                       variant="ghost"
                       size="sm"
                       onClick={loadMoreDetails}
-                      disabled={loadingDetails}
+                      disabled={loadingMore}
                       className="w-full mt-2 flex-shrink-0"
                     >
-                      {loadingDetails && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      {loadingMore && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                       {t('programTrader.loadMore', 'Load More')}
                     </Button>
                   )}
@@ -818,7 +819,7 @@ export function BacktestModal({ open, onOpenChange, binding }: BacktestModalProp
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="flex-1 min-h-0 overflow-hidden">
+                    <div className="flex-1 min-h-0 overflow-y-auto">
                       <TriggerDetailView detail={selectedTrigger} />
                     </div>
                   </div>
@@ -1010,7 +1011,7 @@ function TriggerDetailView({ detail }: { detail: TriggerDetail }) {
   const realizedPnl = detail.realized_pnl ?? 0
 
   return (
-    <div className="h-full flex flex-col text-xs">
+    <div className="flex flex-col text-xs">
       {/* Info Grid - Dashboard style (fixed height) */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 flex-shrink-0">
         <div>
@@ -1086,14 +1087,14 @@ function TriggerDetailView({ detail }: { detail: TriggerDetail }) {
       {hasInputOutput && (
         <div className="flex flex-col gap-1 mt-2 min-h-0">
           {detail.decision_input && (
-            <CollapsibleSection title="Decision Input" defaultOpen={false}>
+            <CollapsibleSection title="Decision Input" copyContent={formatJson(detail.decision_input)} defaultOpen={false}>
               <pre className="bg-muted/30 p-2 rounded overflow-auto text-[10px] max-h-40">
                 {formatJson(detail.decision_input)}
               </pre>
             </CollapsibleSection>
           )}
           {detail.decision_output && (
-            <CollapsibleSection title="Decision Output" defaultOpen={false}>
+            <CollapsibleSection title="Decision Output" copyContent={formatJson(detail.decision_output)} defaultOpen={false}>
               <pre className="bg-muted/30 p-2 rounded overflow-auto text-[10px] max-h-40">
                 {formatJson(detail.decision_output)}
               </pre>
@@ -1104,7 +1105,7 @@ function TriggerDetailView({ detail }: { detail: TriggerDetail }) {
 
       {/* Data Queries - Collapsible */}
       {detail.data_queries && detail.data_queries.length > 0 && (
-        <CollapsibleSection title={`Data Queries (${detail.data_queries.length})`} defaultOpen={false}>
+        <CollapsibleSection title={`Data Queries (${detail.data_queries.length})`} copyContent={detail.data_queries.join('\n')} defaultOpen={false}>
           <div className="bg-muted/30 p-2 rounded text-[10px] max-h-32 overflow-auto">
             {detail.data_queries.map((q, i) => (
               <div key={i} className="text-blue-500">{q}</div>
@@ -1115,7 +1116,7 @@ function TriggerDetailView({ detail }: { detail: TriggerDetail }) {
 
       {/* Execution Logs - Collapsible */}
       {detail.execution_logs && detail.execution_logs.length > 0 && (
-        <CollapsibleSection title={`Execution Logs (${detail.execution_logs.length})`} defaultOpen={false}>
+        <CollapsibleSection title={`Execution Logs (${detail.execution_logs.length})`} copyContent={detail.execution_logs.join('\n')} defaultOpen={false}>
           <div className="bg-muted/30 p-2 rounded text-[10px] max-h-32 overflow-auto">
             {detail.execution_logs.map((log, i) => (
               <div key={i}>{log}</div>
@@ -1137,24 +1138,50 @@ function TriggerDetailView({ detail }: { detail: TriggerDetail }) {
   )
 }
 
-// Collapsible section component for detail view
+// Collapsible section component for detail view with copy support
 function CollapsibleSection({
   title,
   children,
+  copyContent,
   defaultOpen = false
 }: {
   title: string
   children: React.ReactNode
+  copyContent?: string
   defaultOpen?: boolean
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!copyContent) return
+    try {
+      await navigator.clipboard.writeText(copyContent)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
+  }
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="border-t pt-2 mt-1">
-      <CollapsibleTrigger className="flex items-center gap-1 text-muted-foreground hover:text-foreground cursor-pointer w-full text-left">
-        {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-        <span className="text-xs">{title}</span>
-      </CollapsibleTrigger>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="border-t pt-2 mt-1 flex-shrink-0">
+      <div className="flex items-center justify-between">
+        <CollapsibleTrigger className="flex items-center gap-1 text-muted-foreground hover:text-foreground cursor-pointer text-left">
+          {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          <span className="text-xs">{title}</span>
+        </CollapsibleTrigger>
+        {isOpen && copyContent && (
+          <button
+            onClick={handleCopy}
+            className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
+            title="Copy to clipboard"
+          >
+            {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+          </button>
+        )}
+      </div>
       <CollapsibleContent className="mt-1">
         {children}
       </CollapsibleContent>
