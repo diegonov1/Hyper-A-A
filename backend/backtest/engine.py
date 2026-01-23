@@ -137,7 +137,7 @@ class ProgramBacktestEngine:
                         try:
                             regime_result = get_market_regime(
                                 self.db, symbol, "5m",
-                                use_realtime=False,
+                                use_realtime=True,
                                 timestamp_ms=t["timestamp"]
                             )
                             if regime_result:

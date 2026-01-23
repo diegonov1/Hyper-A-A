@@ -53,7 +53,7 @@ class HistoricalDataProvider:
         self._price_cache: Dict[str, float] = {}
 
         # Query tracking for logging
-        self._query_log: List[str] = []
+        self._query_log: List[Dict[str, Any]] = []
 
         # Preload data for better performance
         self._preload_data()
@@ -79,16 +79,23 @@ class HistoricalDataProvider:
         """Clear query log for new trigger."""
         self._query_log = []
 
-    def get_query_log(self) -> List[str]:
+    def get_query_log(self) -> List[Dict[str, Any]]:
         """Get list of data queries made since last clear."""
         return self._query_log.copy()
 
-    def _log_query(self, query_type: str, symbol: str, params: str = ""):
-        """Log a data query."""
-        if params:
-            self._query_log.append(f"{query_type}({symbol}, {params})")
-        else:
-            self._query_log.append(f"{query_type}({symbol})")
+    def _log_query(self, method: str, args: Dict[str, Any], result: Any):
+        """Log a data query with full result for debugging.
+
+        Args:
+            method: Query method name (e.g., 'get_klines', 'get_indicator')
+            args: Query arguments dict
+            result: Query result (will be serialized)
+        """
+        self._query_log.append({
+            "method": method,
+            "args": args,
+            "result": result
+        })
 
     def get_current_prices(self, symbols: List[str] = None) -> Dict[str, float]:
         """Get current prices for symbols at current_time_ms."""
@@ -147,9 +154,6 @@ class HistoricalDataProvider:
         """
         from program_trader.models import Kline
 
-        # Log the query
-        self._log_query("get_klines", symbol, f"period={period}, count={count}")
-
         timestamp_sec = self.current_time_ms // 1000
         cache_key = f"{symbol}_{period}"
 
@@ -173,6 +177,16 @@ class HistoricalDataProvider:
                 volume=k["volume"],
             ))
 
+        # Log query with result summary (last kline info)
+        result_summary = None
+        if result:
+            last_k = result[-1]
+            result_summary = {
+                "count": len(result),
+                "last": {"timestamp": last_k.timestamp, "close": last_k.close}
+            }
+        self._log_query("get_klines", {"symbol": symbol, "period": period, "count": count}, result_summary)
+
         return result
 
     def _load_klines_to_cache(self, symbol: str, period: str):
@@ -180,7 +194,18 @@ class HistoricalDataProvider:
         cache_key = f"{symbol}_{period}"
 
         # Calculate time range with buffer for indicator calculation
-        start_sec = (self.start_time_ms // 1000) - (500 * 300)  # 500 candles * 5min
+        # Need enough history for longest period (1d) with 500 candles
+        # 500 * 86400 = 43200000 seconds = 500 days for daily candles
+        # For hourly: 500 * 3600 = 1800000 seconds = ~20.8 days
+        # Use period-aware buffer calculation
+        period_seconds = {
+            "1m": 60, "5m": 300, "15m": 900, "30m": 1800,
+            "1h": 3600, "4h": 14400, "1d": 86400
+        }
+        period_sec = period_seconds.get(period, 300)  # default to 5m
+        buffer_seconds = 500 * period_sec
+
+        start_sec = (self.start_time_ms // 1000) - buffer_seconds
         end_sec = self.end_time_ms // 1000
 
         try:
@@ -218,12 +243,10 @@ class HistoricalDataProvider:
         """
         from services.technical_indicators import calculate_indicators
 
-        # Log the query
-        self._log_query("get_indicator", symbol, f"indicator={indicator}, period={period}")
-
         # Get klines (enough for indicator calculation)
         klines = self.get_klines(symbol, period, 500)
         if not klines:
+            self._log_query("get_indicator", {"symbol": symbol, "indicator": indicator, "period": period}, {})
             return {}
 
         # Convert to format expected by calculate_indicators
@@ -239,6 +262,7 @@ class HistoricalDataProvider:
             for k in klines
         ]
 
+        result = {}
         try:
             indicator_upper = indicator.upper()
             calculated = calculate_indicators(kline_data, [indicator_upper])
@@ -246,7 +270,7 @@ class HistoricalDataProvider:
             if indicator_upper in calculated and calculated[indicator_upper] is not None:
                 value = calculated[indicator_upper]
                 if isinstance(value, list):
-                    return {'value': value[-1] if value else None, 'series': value}
+                    result = {'value': value[-1] if value else None, 'series': value}
                 elif isinstance(value, dict):
                     latest = {}
                     for k, v in value.items():
@@ -254,13 +278,17 @@ class HistoricalDataProvider:
                             latest[k] = v[-1]
                         else:
                             latest[k] = v
-                    return latest
+                    result = latest
                 else:
-                    return {'value': value}
+                    result = {'value': value}
         except Exception as e:
             logger.warning(f"Failed to calculate {indicator} for {symbol}: {e}")
 
-        return {}
+        # Log with result (exclude series to save space)
+        log_result = {k: v for k, v in result.items() if k != 'series'} if result else {}
+        self._log_query("get_indicator", {"symbol": symbol, "indicator": indicator, "period": period}, log_result)
+
+        return result
 
     def get_flow(self, symbol: str, metric: str, period: str) -> Dict[str, Any]:
         """
@@ -270,17 +298,17 @@ class HistoricalDataProvider:
         """
         from services.market_flow_indicators import get_flow_indicators_for_prompt
 
-        # Log the query
-        self._log_query("get_flow", symbol, f"metric={metric}, period={period}")
-
+        result = {}
         try:
             results = get_flow_indicators_for_prompt(
                 self.db, symbol, period, [metric.upper()], self.current_time_ms
             )
-            return results.get(metric.upper(), {}) or {}
+            result = results.get(metric.upper(), {}) or {}
         except Exception as e:
             logger.warning(f"Failed to get flow {metric} for {symbol}: {e}")
-            return {}
+
+        self._log_query("get_flow", {"symbol": symbol, "metric": metric, "period": period}, result)
+        return result
 
     def get_regime(self, symbol: str, period: str) -> Any:
         """
@@ -291,27 +319,34 @@ class HistoricalDataProvider:
         from program_trader.models import RegimeInfo
         from services.market_regime_service import get_market_regime
 
-        # Log the query
-        self._log_query("get_regime", symbol, f"period={period}")
+        regime_info = RegimeInfo(regime="noise", conf=0.0)
+        log_result = {"regime": "noise", "conf": 0.0}
 
         try:
             result = get_market_regime(
                 self.db, symbol, period,
-                use_realtime=False,
+                use_realtime=True,
                 timestamp_ms=self.current_time_ms
             )
             if result:
-                return RegimeInfo(
+                regime_info = RegimeInfo(
                     regime=result.get("regime", "noise"),
                     conf=result.get("confidence", 0.0),
                     direction=result.get("direction", "neutral"),
                     reason=result.get("reason", ""),
                     indicators=result.get("indicators", {}),
                 )
+                log_result = {
+                    "regime": regime_info.regime,
+                    "conf": regime_info.conf,
+                    "direction": regime_info.direction,
+                    "indicators": regime_info.indicators,
+                }
         except Exception as e:
             logger.warning(f"Failed to get regime for {symbol}: {e}")
 
-        return RegimeInfo(regime="noise", conf=0.0)
+        self._log_query("get_regime", {"symbol": symbol, "period": period}, log_result)
+        return regime_info
 
     def get_price_change(self, symbol: str, period: str) -> Dict[str, float]:
         """Get price change over period.
@@ -321,12 +356,8 @@ class HistoricalDataProvider:
         """
         from services.market_flow_indicators import get_flow_indicators_for_prompt
 
-        # Log the query
-        self._log_query("get_price_change", symbol, f"period={period}")
-
+        result = {"change_percent": 0.0, "change_usd": 0.0}
         try:
-            # Use get_flow_indicators_for_prompt to get full data structure
-            # _get_price_change_data returns: {current, start_price, end_price, last_5, period}
             results = get_flow_indicators_for_prompt(
                 self.db, symbol, period, ["PRICE_CHANGE"], self.current_time_ms
             )
@@ -336,33 +367,32 @@ class HistoricalDataProvider:
                 start_price = data.get("start_price", 0.0)
                 end_price = data.get("end_price", 0.0)
                 change_usd = (end_price - start_price) if start_price and end_price else 0.0
-                return {
+                result = {
                     "change_percent": change_pct,
                     "change_usd": change_usd,
                 }
         except Exception:
             pass
 
-        return {"change_percent": 0.0, "change_usd": 0.0}
+        self._log_query("get_price_change", {"symbol": symbol, "period": period}, result)
+        return result
 
     def get_market_data(self, symbol: str) -> Dict[str, Any]:
         """Get market data snapshot at current time."""
-        # Log the query
-        self._log_query("get_market_data", symbol)
-
         price = self._get_price_at_time(symbol, self.current_time_ms)
+        result = {"symbol": symbol, "price": price or 0.0}
 
         # Get additional data from market_asset_metrics if available
         try:
-            result = self.db.execute(text("""
+            db_result = self.db.execute(text("""
                 SELECT mark_price, funding_rate, open_interest
                 FROM market_asset_metrics
                 WHERE symbol = :symbol AND timestamp <= :ts
                 ORDER BY timestamp DESC LIMIT 1
             """), {"symbol": symbol, "ts": self.current_time_ms})
-            row = result.fetchone()
+            row = db_result.fetchone()
             if row:
-                return {
+                result = {
                     "symbol": symbol,
                     "price": price or float(row[0] or 0),
                     "mark_price": float(row[0] or 0),
@@ -372,6 +402,7 @@ class HistoricalDataProvider:
         except Exception as e:
             logger.warning(f"Failed to get market data for {symbol}: {e}")
 
-        return {"symbol": symbol, "price": price or 0.0}
+        self._log_query("get_market_data", {"symbol": symbol}, result)
+        return result
 
 

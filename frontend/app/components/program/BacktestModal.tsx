@@ -109,7 +109,7 @@ interface TriggerLog {
 interface TriggerDetail extends TriggerLog {
   decision_input: any
   decision_output: any
-  data_queries: string[] | null
+  data_queries: Array<string | { method: string; args: any; result: any }> | null
   execution_logs: string[] | null
 }
 
@@ -1105,10 +1105,16 @@ function TriggerDetailView({ detail }: { detail: TriggerDetail }) {
 
       {/* Data Queries - Collapsible */}
       {detail.data_queries && detail.data_queries.length > 0 && (
-        <CollapsibleSection title={`Data Queries (${detail.data_queries.length})`} copyContent={detail.data_queries.join('\n')} defaultOpen={false}>
+        <CollapsibleSection
+          title={`Data Queries (${detail.data_queries.length})`}
+          copyContent={detail.data_queries.map(q => typeof q === 'string' ? q : JSON.stringify(q)).join('\n')}
+          defaultOpen={false}
+        >
           <div className="bg-muted/30 p-2 rounded text-[10px] max-h-32 overflow-auto">
             {detail.data_queries.map((q, i) => (
-              <div key={i} className="text-blue-500">{q}</div>
+              <div key={i} className="text-blue-500">
+                {typeof q === 'string' ? q : `${q.method}(${JSON.stringify(q.args)}) → ${JSON.stringify(q.result)}`}
+              </div>
             ))}
           </div>
         </CollapsibleSection>
