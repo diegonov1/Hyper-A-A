@@ -281,6 +281,10 @@ data.recent_trades = [
 | `unrealized_pnl` | `float` | 未实现盈亏（USD）|
 | `leverage` | `int` | 杠杆倍数（1-50）|
 | `liquidation_price` | `float` | 强平价格 |
+| `opened_at` | `int` 或 `None` | 开仓时间戳（毫秒）|
+| `opened_at_str` | `str` 或 `None` | 可读的开仓时间（如 "2026-01-15 10:30:00 UTC"）|
+| `holding_duration_seconds` | `float` 或 `None` | 持仓时长（秒）|
+| `holding_duration_str` | `str` 或 `None` | 可读的持仓时长（如 "2h 30m"）|
 
 **使用示例**：
 ```python
@@ -294,6 +298,11 @@ if "BTC" in data.positions:
         if pos.unrealized_pnl > 100:
             # 止盈
             pass
+
+    # 时间止损：持仓超过4小时则平仓
+    if pos.holding_duration_seconds and pos.holding_duration_seconds > 4 * 3600:
+        # 持仓时间过长，考虑平仓
+        pass
 
     # 检查是否接近强平
     market_data = data.get_market_data("BTC")

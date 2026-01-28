@@ -293,7 +293,8 @@ class DataProvider:
             return {}
 
         try:
-            raw_positions = self.trading_client.get_positions(self.db)
+            # Request position timing information (aligned with AI Trader)
+            raw_positions = self.trading_client.get_positions(self.db, include_timing=True)
             positions = {}
             for pos in raw_positions:
                 # HyperliquidTradingClient returns 'coin', not 'symbol'
@@ -310,6 +311,11 @@ class DataProvider:
                     unrealized_pnl=float(pos.get("unrealized_pnl", 0)),
                     leverage=int(float(pos.get("leverage", 1) or 1)),
                     liquidation_price=float(pos.get("liquidation_px", 0) or pos.get("liquidation_price", 0)),
+                    # Position timing information
+                    opened_at=pos.get("opened_at"),
+                    opened_at_str=pos.get("opened_at_str"),
+                    holding_duration_seconds=pos.get("holding_duration_seconds"),
+                    holding_duration_str=pos.get("holding_duration_str"),
                 )
             self._positions_cache = positions
             return positions

@@ -1203,6 +1203,7 @@
     "action": "操作",
     "history": "历史记录",
     "noHistory": "暂无回测历史",
+    "historyLimit": "仅显示最近 30 条记录",
     "runBacktestFirst": "运行回测后查看触发详情"
   },
   "program": {

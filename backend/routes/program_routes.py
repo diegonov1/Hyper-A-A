@@ -1864,14 +1864,16 @@ async def _run_backtest_with_progress(engine, config, signal_triggers, db, backt
         trade_realized_pnl = 0.0
         execution_error = None
 
+        # Use snapshots from BEFORE strategy execution
         decision_input = {
-            "balance": account.balance,
-            "equity": exec_result.equity_after,
+            "balance": exec_result.balance_before,
+            "equity": exec_result.equity_after_tp_sl,  # Equity after TP/SL but before strategy
+            "used_margin": exec_result.used_margin_before,
+            "margin_usage_percent": exec_result.margin_usage_percent_before,
             "trigger_type": trigger.trigger_type,
             "trigger_symbol": exec_result.trigger_symbol,
             "prices": exec_result.prices,
-            "positions": {k: {"side": v.side, "size": v.size, "entry_price": v.entry_price}
-                         for k, v in account.positions.items()},
+            "positions": exec_result.positions_before,
             "signal_pool_name": trigger.pool_name or "",
             "pool_logic": trigger.pool_logic or "OR",
             "triggered_signals": trigger.triggered_signals or [],
@@ -2058,7 +2060,7 @@ def get_backtest_history(
             "total_trades": bt.total_trades,
             "win_rate": bt.win_rate,
             "status": bt.status,
-            "created_at": bt.created_at.isoformat() if bt.created_at else None,
+            "created_at": bt.created_at.isoformat() + "Z" if bt.created_at else None,
         })
 
     return {

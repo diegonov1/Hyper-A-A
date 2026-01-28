@@ -17,7 +17,10 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from database.models import AiProgramConversation, AiProgramMessage, TradingProgram, Account
+from database.models import (
+    AiProgramConversation, AiProgramMessage, TradingProgram, Account,
+    BacktestResult, BacktestTriggerLog, AccountProgramBinding
+)
 from services.ai_decision_service import build_chat_completion_endpoints, detect_api_format, _extract_text_from_message, get_max_tokens
 from services.system_logger import system_logger
 from services.ai_shared_tools import (
@@ -190,8 +193,15 @@ pos.entry_price       # float: Entry price
 pos.unrealized_pnl    # float: Unrealized PnL
 pos.leverage          # int: Leverage used
 pos.liquidation_price # float: Liquidation price
+# Position timing (for time-based exit strategies)
+pos.opened_at              # int or None: Timestamp in milliseconds when position was opened
+pos.opened_at_str          # str or None: Human-readable opened time (e.g., "2026-01-15 10:30:00 UTC")
+pos.holding_duration_seconds  # float or None: How long position has been held in seconds
+pos.holding_duration_str   # str or None: Human-readable duration (e.g., "2h 30m")
 # Example: Position(symbol="BTC", side="long", size=0.001, entry_price=95400.0,
-#                   unrealized_pnl=0.03, leverage=1, liquidation_price=0.0)
+#                   unrealized_pnl=0.03, leverage=1, liquidation_price=0.0,
+#                   opened_at=1736942400000, opened_at_str="2026-01-15 10:30:00 UTC",
+#                   holding_duration_seconds=7200.0, holding_duration_str="2h 0m")
 ```
 
 ### Trade - Recent trade record (from data.recent_trades)
@@ -520,6 +530,16 @@ class RSIStrategy:
 6. Use `test_run_code` to test with real market data
 7. If test passes, use `suggest_save_code` to propose saving
 
+## BACKTEST ANALYSIS (only when user asks to analyze backtest results)
+When user asks to analyze strategy backtest results or performance:
+1. Use `get_backtest_history` to get list of backtests with official stats (PnL, win_rate, etc.)
+   - IMPORTANT: Use these stats directly! Do NOT recalculate from trigger list.
+   - winning_trades = TP count, losing_trades = SL count
+2. Use `get_trigger_list` to see all triggers (for identifying specific trades to analyze)
+3. Use `get_trigger_details` to deep dive into specific triggers
+   - fields: summary, input, output, queries, logs
+   - Example: get_trigger_details(backtest_id=123, indexes=[5,8,12], fields=["summary","input"])
+
 ## IMPORTANT RULES
 - Class must have `should_trade(self, data)` method
 - `should_trade` must return a `Decision` object
@@ -649,7 +669,78 @@ PROGRAM_TOOLS = [
             }
         }
     }
-] + SHARED_SIGNAL_TOOLS  # Add shared signal pool tools
+]
+
+# Backtest analysis tools - for analyzing strategy backtest results
+BACKTEST_ANALYSIS_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_backtest_history",
+            "description": "Get backtest history for the current program. Use this when user asks to analyze backtest results or strategy performance. Returns list of backtests with key metrics (PnL, win rate, drawdown).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max number of backtests to return (default: 10)"
+                    }
+                },
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_trigger_list",
+            "description": "Get trigger summary list for a specific backtest. Returns overview of each trigger: index, time, symbol, action, equity change, PnL. Use this to identify problematic triggers.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "backtest_id": {
+                        "type": "integer",
+                        "description": "Backtest ID from get_backtest_history"
+                    }
+                },
+                "required": ["backtest_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_trigger_details",
+            "description": "Get detailed info for specific triggers. Use this to analyze why certain decisions were made. Supports batch query and field filtering to save tokens.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "backtest_id": {
+                        "type": "integer",
+                        "description": "Backtest ID"
+                    },
+                    "indexes": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "description": "Trigger indexes to query (e.g., [5, 8, 12])"
+                    },
+                    "fields": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": ["summary", "input", "output", "queries", "logs"]
+                        },
+                        "description": "Fields to include. Default all. summary=basic info, input=decision_input, output=decision_output, queries=data_queries, logs=execution_logs"
+                    }
+                },
+                "required": ["backtest_id", "indexes"]
+            }
+        }
+    }
+]
+
+# Combine all tools
+PROGRAM_TOOLS = PROGRAM_TOOLS + BACKTEST_ANALYSIS_TOOLS + SHARED_SIGNAL_TOOLS
 
 
 def _convert_tools_to_anthropic(openai_tools: List[Dict]) -> List[Dict]:
@@ -866,6 +957,10 @@ MARKET_API_DOCS = """
 - pos.unrealized_pnl: float - Unrealized PnL
 - pos.leverage: int - Leverage used
 - pos.liquidation_price: float - Liquidation price
+- pos.opened_at: int or None - Timestamp in milliseconds when position was opened
+- pos.opened_at_str: str or None - Human-readable opened time (e.g., "2026-01-15 10:30:00 UTC")
+- pos.holding_duration_seconds: float or None - How long position has been held in seconds
+- pos.holding_duration_str: str or None - Human-readable duration (e.g., "2h 30m")
 
 ### Trade Object (from data.recent_trades)
 - trade.symbol: str - Trading symbol (e.g., "BTC")
@@ -1088,6 +1183,163 @@ def _query_market_data(db: Session, symbol: str, period: str) -> str:
         return json.dumps({"error": str(e)})
 
 
+def _get_backtest_history(db: Session, program_id: Optional[int], user_id: int, limit: int = 10) -> str:
+    """Get backtest history for the current program."""
+    try:
+        if not program_id:
+            return json.dumps({"error": "No program selected. This tool only works when editing an existing program."})
+
+        # Find all bindings for this program (a program can have multiple bindings)
+        bindings = db.query(AccountProgramBinding).filter(
+            AccountProgramBinding.program_id == program_id
+        ).all()
+
+        if not bindings:
+            return json.dumps({"error": "No binding found for this program. Run a backtest first."})
+
+        binding_ids = [b.id for b in bindings]
+
+        # Get backtest history from all bindings
+        backtests = db.query(BacktestResult).filter(
+            BacktestResult.binding_id.in_(binding_ids),
+            BacktestResult.status == "completed"
+        ).order_by(BacktestResult.created_at.desc()).limit(limit).all()
+
+        if not backtests:
+            return json.dumps({"error": "No backtest results found. Run a backtest first."})
+
+        results = []
+        for bt in backtests:
+            results.append({
+                "id": bt.id,
+                "time_range": f"{bt.start_time.strftime('%Y-%m-%d %H:%M') if bt.start_time else 'N/A'} ~ {bt.end_time.strftime('%Y-%m-%d %H:%M') if bt.end_time else 'N/A'}",
+                "initial_balance": bt.initial_balance,
+                "final_equity": round(bt.final_equity, 2) if bt.final_equity else 0,
+                "total_pnl": round(bt.total_pnl, 2) if bt.total_pnl else 0,
+                "total_pnl_percent": round(bt.total_pnl_percent, 2) if bt.total_pnl_percent else 0,
+                "max_drawdown_percent": round(bt.max_drawdown_percent, 2) if bt.max_drawdown_percent else 0,
+                "total_triggers": bt.total_triggers,
+                "total_trades": bt.total_trades,  # Closed trades count
+                "winning_trades": bt.winning_trades,  # TP count
+                "losing_trades": bt.losing_trades,  # SL count
+                "win_rate": round(bt.win_rate, 2) if bt.win_rate else 0,  # Already 0-100 scale
+                "profit_factor": round(bt.profit_factor, 2) if bt.profit_factor else 0,
+                "created_at": bt.created_at.strftime('%Y-%m-%d %H:%M') if bt.created_at else None
+            })
+
+        return json.dumps({
+            "note": "Use these official stats directly. Do NOT recalculate from trigger list.",
+            "backtests": results
+        }, indent=2)
+
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+def _get_trigger_list(db: Session, backtest_id: int) -> str:
+    """Get trigger summary list for a backtest."""
+    try:
+        triggers = db.query(BacktestTriggerLog).filter(
+            BacktestTriggerLog.backtest_id == backtest_id
+        ).order_by(BacktestTriggerLog.trigger_index).all()
+
+        if not triggers:
+            return json.dumps({"error": f"No triggers found for backtest {backtest_id}"})
+
+        results = []
+        for t in triggers:
+            pnl = t.realized_pnl or 0
+            results.append({
+                "index": t.trigger_index,
+                "time": t.trigger_time.strftime('%Y-%m-%d %H:%M:%S') if t.trigger_time else None,
+                "type": t.trigger_type,
+                "symbol": t.symbol,
+                "action": t.decision_action,
+                "side": t.decision_side,
+                "size": round(t.decision_size, 4) if t.decision_size else None,
+                "equity": f"${t.equity_before:.2f} -> ${t.equity_after:.2f}" if t.equity_before and t.equity_after else None,
+                "pnl": round(pnl, 2) if pnl != 0 else None,
+                "reason": t.decision_reason[:80] if t.decision_reason else None
+            })
+
+        return json.dumps({"total": len(results), "triggers": results}, indent=2)
+
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+def _get_trigger_details(db: Session, backtest_id: int, indexes: List[int], fields: List[str] = None) -> str:
+    """Get detailed info for specific triggers."""
+    try:
+        if not indexes:
+            return json.dumps({"error": "indexes is required"})
+
+        # Default to all fields
+        if not fields:
+            fields = ["summary", "input", "output", "queries", "logs"]
+
+        triggers = db.query(BacktestTriggerLog).filter(
+            BacktestTriggerLog.backtest_id == backtest_id,
+            BacktestTriggerLog.trigger_index.in_(indexes)
+        ).order_by(BacktestTriggerLog.trigger_index).all()
+
+        if not triggers:
+            return json.dumps({"error": f"No triggers found for indexes {indexes}"})
+
+        results = []
+        for t in triggers:
+            detail = {"index": t.trigger_index}
+
+            if "summary" in fields:
+                detail["summary"] = {
+                    "time": t.trigger_time.strftime('%Y-%m-%d %H:%M:%S') if t.trigger_time else None,
+                    "type": t.trigger_type,
+                    "symbol": t.symbol,
+                    "action": t.decision_action,
+                    "side": t.decision_side,
+                    "size": t.decision_size,
+                    "entry_price": t.entry_price,
+                    "exit_price": t.exit_price,
+                    "equity_before": t.equity_before,
+                    "equity_after": t.equity_after,
+                    "unrealized_pnl": t.unrealized_pnl,
+                    "realized_pnl": t.realized_pnl,
+                    "fee": t.fee,
+                    "reason": t.decision_reason
+                }
+
+            if "input" in fields and t.decision_input:
+                try:
+                    detail["input"] = json.loads(t.decision_input)
+                except:
+                    detail["input"] = t.decision_input
+
+            if "output" in fields and t.decision_output:
+                try:
+                    detail["output"] = json.loads(t.decision_output)
+                except:
+                    detail["output"] = t.decision_output
+
+            if "queries" in fields and t.data_queries:
+                try:
+                    detail["queries"] = json.loads(t.data_queries)
+                except:
+                    detail["queries"] = t.data_queries
+
+            if "logs" in fields and t.execution_logs:
+                try:
+                    detail["logs"] = json.loads(t.execution_logs)
+                except:
+                    detail["logs"] = t.execution_logs
+
+            results.append(detail)
+
+        return json.dumps({"triggers": results}, indent=2)
+
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
 def _execute_tool(
     tool_name: str,
     arguments: Dict[str, Any],
@@ -1153,6 +1405,25 @@ def _execute_tool(
             symbol = arguments.get("symbol", "BTC")
             hours = arguments.get("hours", 24)
             return execute_run_signal_backtest(db, pool_id, symbol, hours)
+
+        # Backtest analysis tools
+        elif tool_name == "get_backtest_history":
+            limit = arguments.get("limit", 10)
+            return _get_backtest_history(db, program_id, user_id, limit)
+
+        elif tool_name == "get_trigger_list":
+            backtest_id = arguments.get("backtest_id")
+            if backtest_id is None:
+                return json.dumps({"error": "backtest_id is required"})
+            return _get_trigger_list(db, backtest_id)
+
+        elif tool_name == "get_trigger_details":
+            backtest_id = arguments.get("backtest_id")
+            indexes = arguments.get("indexes", [])
+            fields = arguments.get("fields")
+            if backtest_id is None:
+                return json.dumps({"error": "backtest_id is required"})
+            return _get_trigger_details(db, backtest_id, indexes, fields)
 
         else:
             return f"Unknown tool: {tool_name}"

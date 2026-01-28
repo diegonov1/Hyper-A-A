@@ -289,6 +289,10 @@ The `Position` object represents an open trading position.
 | `unrealized_pnl` | `float` | Unrealized profit/loss in USD |
 | `leverage` | `int` | Leverage multiplier (1-50) |
 | `liquidation_price` | `float` | Price at which position will be liquidated |
+| `opened_at` | `int` or `None` | Timestamp in milliseconds when position was opened |
+| `opened_at_str` | `str` or `None` | Human-readable opened time (e.g., "2026-01-15 10:30:00 UTC") |
+| `holding_duration_seconds` | `float` or `None` | How long position has been held in seconds |
+| `holding_duration_str` | `str` or `None` | Human-readable duration (e.g., "2h 30m") |
 
 **Example Usage**:
 ```python
@@ -303,9 +307,14 @@ if "BTC" in data.positions:
             # Take profit
             pass
 
+    # Time-based exit: close if held for more than 4 hours
+    if pos.holding_duration_seconds and pos.holding_duration_seconds > 4 * 3600:
+        # Position held too long, consider closing
+        pass
+
     # Check if position is at risk
     market_data = data.get_market_data("BTC")
-current_price = market_data.get("price", 0)
+    current_price = market_data.get("price", 0)
     if pos.side == "long" and current_price < pos.liquidation_price * 1.1:
         # Close position - too close to liquidation
         pass

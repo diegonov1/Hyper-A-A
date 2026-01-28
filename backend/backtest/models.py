@@ -111,6 +111,10 @@ class TriggerExecutionResult:
     equity_after: float
     equity_after_tp_sl: float = 0.0        # Equity after TP/SL but before strategy execution
     unrealized_pnl: float = 0.0
+    balance_before: float = 0.0            # Balance before strategy execution
+    positions_before: Dict[str, Any] = field(default_factory=dict)  # Positions snapshot before execution
+    used_margin_before: float = 0.0        # Used margin before strategy execution
+    margin_usage_percent_before: float = 0.0  # Margin usage % before strategy execution
 
     # Data queries during execution
     data_queries: List[Dict[str, Any]] = field(default_factory=list)

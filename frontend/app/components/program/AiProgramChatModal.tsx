@@ -535,9 +535,9 @@ function ChatArea({
                     ))}
                   </div>
                 )}
-                <div className={`text-sm prose prose-sm max-w-none ${
+                <div className={`text-sm prose prose-sm max-w-none overflow-x-auto ${
                   msg.role === 'user' ? 'prose-invert text-white' : 'dark:prose-invert'
-                }`}>
+                } [&_table]:w-full [&_table]:table-fixed [&_th]:text-left [&_td]:break-words`}>
                   {msg.content ? (
                     <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{msg.content}</ReactMarkdown>
                   ) : msg.isStreaming ? (

@@ -38,6 +38,11 @@ class Position:
     unrealized_pnl: float
     leverage: int
     liquidation_price: float
+    # Position timing information (aligned with AI Trader's {positions_detail})
+    opened_at: Optional[int] = None  # Timestamp in milliseconds when position was opened
+    opened_at_str: Optional[str] = None  # Human-readable opened time (e.g., "2026-01-15 10:30:00 UTC")
+    holding_duration_seconds: Optional[float] = None  # How long position has been held in seconds
+    holding_duration_str: Optional[str] = None  # Human-readable duration (e.g., "2h 30m")
 
 
 @dataclass

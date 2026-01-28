@@ -202,7 +202,7 @@ export function BacktestModal({ open, onOpenChange, binding }: BacktestModalProp
   const loadHistory = async () => {
     setLoadingHistory(true)
     try {
-      const res = await fetch(`/api/programs/backtest/history?binding_id=${binding.id}&limit=20`)
+      const res = await fetch(`/api/programs/backtest/history?binding_id=${binding.id}&limit=30`)
       if (res.ok) {
         const data = await res.json()
         setHistoryList(data.results)
@@ -525,7 +525,8 @@ export function BacktestModal({ open, onOpenChange, binding }: BacktestModalProp
                     {t('programTrader.noHistory', 'No backtest history')}
                   </div>
                 ) : (
-                  historyList.map((item) => (
+                  <>
+                  {historyList.map((item) => (
                     <DropdownMenuItem
                       key={item.id}
                       onClick={() => loadHistoricalBacktest(item)}
@@ -548,7 +549,13 @@ export function BacktestModal({ open, onOpenChange, binding }: BacktestModalProp
                         </div>
                       </div>
                     </DropdownMenuItem>
-                  ))
+                  ))}
+                  {historyList.length >= 30 && (
+                    <div className="p-2 text-center text-xs text-muted-foreground border-t">
+                      {t('programTrader.historyLimit', 'Showing latest 30 records')}
+                    </div>
+                  )}
+                  </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -754,7 +761,7 @@ export function BacktestModal({ open, onOpenChange, binding }: BacktestModalProp
                                 {loadingTriggerDetail && isSelected ? (
                                   <Loader2 className="h-3 w-3 animate-spin" />
                                 ) : (
-                                  log.trigger_index + 1
+                                  log.trigger_index
                                 )}
                               </td>
                               <td className="p-2 whitespace-nowrap text-xs">
@@ -767,7 +774,9 @@ export function BacktestModal({ open, onOpenChange, binding }: BacktestModalProp
                                 log.decision_action === 'close' ? 'text-yellow-500' :
                                 'text-muted-foreground'
                               }`}>
-                                {isTpSl ? log.trigger_type.toUpperCase() : (log.decision_action?.toUpperCase() || '-')}
+                                {isTpSl
+                                  ? `${log.trigger_type.toUpperCase()} ${log.decision_symbol || ''}`.trim()
+                                  : `${log.decision_action?.toUpperCase() || '-'} ${log.decision_symbol || ''}`.trim()}
                               </td>
                               <td className={`p-2 text-right ${
                                 unrealizedPnl > 0 ? 'text-green-500' : unrealizedPnl < 0 ? 'text-red-500' : 'text-muted-foreground'
@@ -808,7 +817,7 @@ export function BacktestModal({ open, onOpenChange, binding }: BacktestModalProp
                   <div className="w-1/2 border rounded-lg p-3 bg-muted/20 flex flex-col overflow-hidden">
                     <div className="flex justify-between items-center mb-3 flex-shrink-0">
                       <span className="text-sm font-medium">
-                        #{selectedTrigger.trigger_index + 1} Detail
+                        #{selectedTrigger.trigger_index} Detail
                       </span>
                       <Button
                         variant="ghost"
@@ -884,19 +893,18 @@ const EquityCurve = React.memo(function EquityCurve({
 
   // Prepare data with index for display
   const chartData = React.useMemo(() => data.map((d, i) => ({
-    index: i + 1,
+    index: i,
     equity: d.equity,
     pnl: d.equity - initialBalance,
     pnlPercent: ((d.equity - initialBalance) / initialBalance * 100).toFixed(2),
   })), [data, initialBalance])
 
   // Build trade markers map (chartData index -> marker style)
-  // Note: trigger index is 0-based, chartData.index is 1-based, so we add 1
   const tradeMarkersMap = React.useMemo(() => {
     const map = new Map<number, { bg: string; letter: string }>()
     trades.forEach(t => {
       const style = getTradeMarkerStyle(t.action, t.trigger_type)
-      if (style) map.set(t.index + 1, style)
+      if (style) map.set(t.index, style)
     })
     return map
   }, [trades])

@@ -104,7 +104,7 @@ class VirtualAccount:
         self.max_drawdown_percent = 0.0
 
     def update_equity(self, prices: Dict[str, float]):
-        """Update equity based on current prices (Account Value style)."""
+        """Update equity and available balance based on current prices."""
         self.unrealized_pnl_total = 0.0
         for symbol, pos in self.positions.items():
             if symbol in prices:
@@ -112,6 +112,9 @@ class VirtualAccount:
 
         # Account Value = initial + realized + unrealized - fees
         self.equity = self.initial_balance + self.realized_pnl_total + self.unrealized_pnl_total - self.total_fees
+
+        # Available balance = equity - used_margin (matches Hyperliquid)
+        self.balance = self.equity - self.get_used_margin()
 
         # Track drawdown
         if self.equity > self.peak_equity:
@@ -123,6 +126,21 @@ class VirtualAccount:
             if current_drawdown > self.max_drawdown:
                 self.max_drawdown = current_drawdown
                 self.max_drawdown_percent = current_drawdown_pct
+
+    def get_used_margin(self) -> float:
+        """Calculate total used margin across all positions."""
+        return sum(pos.margin_used for pos in self.positions.values())
+
+    def get_margin_usage_percent(self) -> float:
+        """Calculate margin usage as percentage of equity."""
+        if self.equity <= 0:
+            return 100.0
+        used_margin = self.get_used_margin()
+        return (used_margin / self.equity) * 100
+
+    def get_maintenance_margin(self) -> float:
+        """Calculate maintenance margin (simplified: 50% of used margin)."""
+        return self.get_used_margin() * 0.5
 
     def open_position(
         self,
@@ -154,7 +172,8 @@ class VirtualAccount:
         )
 
         self.positions[symbol] = position
-        self.balance -= margin_required
+        # Note: balance is now calculated dynamically in update_equity()
+        # as equity - used_margin, so no need to manually adjust here
 
         # Track fee (affects equity via total_fees)
         self.total_fees += fee
@@ -179,8 +198,8 @@ class VirtualAccount:
         self.realized_pnl_total += realized_pnl
         self.total_fees += fee
 
-        # Return margin to available balance
-        self.balance += pos.margin_used
+        # Note: balance is now calculated dynamically in update_equity()
+        # as equity - used_margin, so no need to manually adjust here
 
         # Remove position and related orders
         del self.positions[symbol]
@@ -227,8 +246,7 @@ class VirtualAccount:
         if stop_loss is not None:
             pos.stop_loss_price = stop_loss
 
-        # Update balance and fees
-        self.balance -= additional_margin
+        # Note: balance is now calculated dynamically in update_equity()
         self.total_fees += fee
 
         return pos
@@ -318,7 +336,6 @@ class VirtualAccount:
         # Update position
         remaining_size = pos.size - close_size
         if remaining_size <= 0.0001:  # Effectively zero, close entire position
-            self.balance += pos.margin_used
             del self.positions[symbol]
             # Remove all pending orders for this symbol
             self.pending_orders = [o for o in self.pending_orders if o.symbol != symbol]
@@ -326,8 +343,8 @@ class VirtualAccount:
             # Update position with remaining size
             pos.margin_used -= margin_to_return
             pos.size = remaining_size
-            self.balance += margin_to_return
 
+        # Note: balance is now calculated dynamically in update_equity()
         return realized_pnl
 
     def get_state_snapshot(self) -> Dict[str, Any]:

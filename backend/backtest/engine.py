@@ -225,9 +225,9 @@ class ProgramBacktestEngine:
             # Determine trigger symbol
             trigger_symbol = trigger.symbol if trigger.symbol else config.symbols[0]
 
-            # Build MarketData for strategy
+            # Build MarketData for strategy (pass trades for recent_trades)
             market_data = self._build_market_data(
-                account, data_provider, trigger, trigger_symbol
+                account, data_provider, trigger, trigger_symbol, trades
             )
 
             # Execute strategy
@@ -358,6 +358,7 @@ class ProgramBacktestEngine:
         from program_trader.executor import SandboxExecutor
 
         executor = SandboxExecutor(timeout_seconds=5)
+        all_trades: List[BacktestTradeRecord] = []  # Track all trades for recent_trades
 
         # Scheduled trigger state
         scheduled_interval_ms = None
@@ -432,9 +433,18 @@ class ProgramBacktestEngine:
             # Determine trigger symbol
             trigger_symbol = trigger.symbol if trigger.symbol else config.symbols[0]
 
-            # Build MarketData for strategy
+            # Snapshot account state BEFORE strategy execution (for logging)
+            balance_before = account.balance
+            positions_before = {
+                k: {"side": v.side, "size": v.size, "entry_price": v.entry_price}
+                for k, v in account.positions.items()
+            }
+            used_margin_before = account.get_used_margin()
+            margin_usage_percent_before = account.get_margin_usage_percent()
+
+            # Build MarketData for strategy (pass all_trades for recent_trades)
             market_data = self._build_market_data(
-                account, data_provider, trigger, trigger_symbol
+                account, data_provider, trigger, trigger_symbol, all_trades
             )
 
             # Execute strategy
@@ -459,6 +469,12 @@ class ProgramBacktestEngine:
                         pool_name=trigger.pool_name,
                         triggered_signals=signal_names,
                     )
+                    if trade:
+                        all_trades.append(trade)
+
+            # Track TP/SL trades
+            for tp_sl_trade in tp_sl_trades:
+                all_trades.append(tp_sl_trade)
 
             # Update equity
             account.update_equity(prices)
@@ -474,6 +490,10 @@ class ProgramBacktestEngine:
                 equity_after=account.equity,
                 equity_after_tp_sl=equity_after_tp_sl,
                 unrealized_pnl=account.unrealized_pnl_total,
+                balance_before=balance_before,
+                positions_before=positions_before,
+                used_margin_before=used_margin_before,
+                margin_usage_percent_before=margin_usage_percent_before,
                 data_queries=data_provider.get_query_log(),
             )
 
@@ -518,13 +538,36 @@ class ProgramBacktestEngine:
         data_provider: HistoricalDataProvider,
         trigger: TriggerEvent,
         trigger_symbol: str,
+        recent_trades: List[BacktestTradeRecord] = None,
     ) -> Any:
         """Build MarketData object for strategy execution."""
-        from program_trader.models import MarketData, Position
+        from program_trader.models import MarketData, Position, Trade
+        from datetime import datetime, timezone
 
         # Convert virtual positions to Position objects
         positions = {}
+        current_time_ms = trigger.timestamp  # Use trigger timestamp as current time in backtest
         for symbol, vpos in account.positions.items():
+            # Calculate position timing information
+            opened_at = vpos.entry_timestamp if vpos.entry_timestamp else None
+            opened_at_str = None
+            holding_duration_seconds = None
+            holding_duration_str = None
+
+            if opened_at and opened_at > 0:
+                # Format opened_at as UTC string
+                utc_dt = datetime.fromtimestamp(opened_at / 1000, tz=timezone.utc)
+                opened_at_str = utc_dt.strftime('%Y-%m-%d %H:%M:%S UTC')
+
+                # Calculate holding duration
+                holding_duration_seconds = (current_time_ms - opened_at) / 1000
+                hours = int(holding_duration_seconds // 3600)
+                minutes = int((holding_duration_seconds % 3600) // 60)
+                if hours > 0:
+                    holding_duration_str = f"{hours}h {minutes}m"
+                else:
+                    holding_duration_str = f"{minutes}m"
+
             positions[symbol] = Position(
                 symbol=symbol,
                 side=vpos.side,
@@ -533,7 +576,25 @@ class ProgramBacktestEngine:
                 unrealized_pnl=vpos.unrealized_pnl,
                 leverage=vpos.leverage,
                 liquidation_price=0,
+                opened_at=opened_at,
+                opened_at_str=opened_at_str,
+                holding_duration_seconds=holding_duration_seconds,
+                holding_duration_str=holding_duration_str,
             )
+
+        # Convert recent trades to Trade objects (last 20 closed trades)
+        trade_objects = []
+        if recent_trades:
+            closed_trades = [t for t in recent_trades if t.exit_price is not None][-20:]
+            for t in closed_trades:
+                trade_objects.append(Trade(
+                    symbol=t.symbol,
+                    side=t.side.capitalize(),  # "long" -> "Long"
+                    size=t.size,
+                    price=t.entry_price,
+                    timestamp=t.timestamp,
+                    pnl=t.pnl,
+                ))
 
         # Build triggered signals info - pass through ALL fields from backtest service
         # Strategy code needs: metric, current_value, direction, ratio, threshold, etc.
@@ -563,9 +624,13 @@ class ProgramBacktestEngine:
         return MarketData(
             available_balance=account.balance,
             total_equity=account.equity,
+            used_margin=account.get_used_margin(),
+            margin_usage_percent=account.get_margin_usage_percent(),
+            maintenance_margin=account.get_maintenance_margin(),
             trigger_symbol=trigger_symbol,
             trigger_type=trigger.trigger_type,
             positions=positions,
+            recent_trades=trade_objects,
             # Trigger context (detailed)
             signal_pool_name=trigger.pool_name or "",
             pool_logic=trigger.pool_logic or "OR",

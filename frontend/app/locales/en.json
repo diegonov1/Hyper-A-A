@@ -1184,6 +1184,7 @@
     "action": "Action",
     "history": "History",
     "noHistory": "No backtest history",
+    "historyLimit": "Showing latest 30 records",
     "runBacktestFirst": "Run backtest to see trigger details"
   },
   "program": {
