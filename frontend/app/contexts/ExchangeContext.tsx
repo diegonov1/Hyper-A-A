@@ -19,7 +19,7 @@ interface ExchangeProviderProps {
 }
 
 // Storage key for persisting exchange selection
-const STORAGE_KEY = 'hyper-alpha-arena-selected-exchange';
+const STORAGE_KEY = 'binance-trading-bot-selected-exchange';
 
 export function ExchangeProvider({ children }: ExchangeProviderProps) {
   const [currentExchange, setCurrentExchange] = useState<ExchangeId>(DEFAULT_EXCHANGE);
@@ -80,15 +80,15 @@ export function ExchangeProvider({ children }: ExchangeProviderProps) {
       id: 'binance',
       name: 'Binance',
       displayName: 'Binance',
-      selectable: false,
+      selectable: true,
       selected: currentExchange === 'binance',
-      apiSupported: false,
-      comingSoon: true,
+      apiSupported: true,
+      comingSoon: false,
       logo: '/static/binance_logo.png',
       description: 'World\'s largest cryptocurrency exchange',
       features: ['30% Fee Discount', 'High Liquidity', 'Advanced Tools'],
       referralLink: 'https://accounts.maxweb.red/register?ref=HYPERVIP',
-      buttonText: 'Register First',
+      buttonText: 'Open Spot',
       buttonVariant: 'outline'
     },
     {

@@ -208,7 +208,7 @@ export default function OrderForm({
       const avgPrice = orderResult.averagePrice || orderResult.average_price || orderResult.price;
       const priceText = avgPrice ? ` @ $${avgPrice.toFixed(2)}` : '';
 
-      // 根据Hyperliquid状态判断订单结果
+      // Hyperliquid
       const status = orderResult.status;
 
       if (status === 'filled') {
@@ -224,7 +224,7 @@ export default function OrderForm({
           `Order failed: ${orderResult.error || 'Unknown error'}`
         );
       } else {
-        // 未知状态，显示为错误
+        // ，
         toast.error(
           `Order failed: Unknown status (${status})`
         );

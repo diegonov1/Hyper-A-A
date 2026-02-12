@@ -1,5 +1,5 @@
 """
-K线数据统一服务层 - 提供统一的数据操作接口
+K - 
 """
 
 import asyncio
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class KlineDataService:
-    """K线数据统一服务 - 启动时确定交易所，后续不再判断"""
+    """K - ，"""
 
     def __init__(self):
         self.exchange_id: Optional[str] = None
@@ -25,12 +25,12 @@ class KlineDataService:
         self._initialized = False
 
     async def initialize(self):
-        """初始化服务 - 读取用户配置并确定交易所"""
+        """ - """
         if self._initialized:
             return
 
         try:
-            # 从数据库读取用户选择的交易所
+            # 
             with SessionLocal() as db:
                 config = db.query(UserExchangeConfig).filter(
                     UserExchangeConfig.user_id == 1
@@ -39,9 +39,9 @@ class KlineDataService:
                 if config:
                     self.exchange_id = config.selected_exchange
                 else:
-                    self.exchange_id = "hyperliquid"  # 默认值
+                    self.exchange_id = "hyperliquid"  # 
 
-            # 初始化对应的采集器
+            # 
             self.collector = ExchangeDataSourceFactory.get_collector(self.exchange_id)
             self._initialized = True
 
@@ -49,28 +49,28 @@ class KlineDataService:
 
         except Exception as e:
             logger.error(f"Failed to initialize KlineDataService: {e}")
-            # 使用默认配置
+            # 
             self.exchange_id = "hyperliquid"
             self.collector = ExchangeDataSourceFactory.get_collector(self.exchange_id)
             self._initialized = True
 
     def _ensure_initialized(self):
-        """确保服务已初始化"""
+        """"""
         if not self._initialized:
             raise RuntimeError("KlineDataService not initialized. Call initialize() first.")
 
     async def collect_current_kline(self, symbol: str, period: str = "1m") -> bool:
-        """采集当前分钟的K线数据"""
+        """K"""
         self._ensure_initialized()
 
         try:
-            # 使用已确定的采集器获取数据
+            # 
             kline_data = await self.collector.fetch_current_kline(symbol, period)
             if not kline_data:
                 logger.warning(f"No kline data received for {symbol}")
                 return False
 
-            # 插入数据库（自动去重）
+            # （）
             return await self._insert_kline_data([kline_data])
 
         except Exception as e:
@@ -84,11 +84,11 @@ class KlineDataService:
         end_time: datetime,
         period: str = "1m"
     ) -> int:
-        """采集历史K线数据，返回成功插入的记录数"""
+        """K，"""
         self._ensure_initialized()
 
         try:
-            # 使用已确定的采集器获取历史数据
+            # 
             klines_data = await self.collector.fetch_historical_klines(
                 symbol, start_time, end_time, period
             )
@@ -97,7 +97,7 @@ class KlineDataService:
                 logger.warning(f"No historical klines received for {symbol}")
                 return 0
 
-            # 批量插入数据库
+            # 
             success = await self._insert_kline_data(klines_data)
             return len(klines_data) if success else 0
 
@@ -106,7 +106,7 @@ class KlineDataService:
             return 0
 
     async def _insert_kline_data(self, klines_data: List[KlineData]) -> bool:
-        """批量插入K线数据到数据库（自动去重）"""
+        """K（）"""
         if not klines_data:
             return True
 
@@ -116,8 +116,8 @@ class KlineDataService:
                     # Generate datetime_str from timestamp (UTC)
                     datetime_str = datetime.utcfromtimestamp(kline.timestamp).strftime('%Y-%m-%d %H:%M:%S')
 
-                    # 使用原生SQL的ON CONFLICT DO NOTHING实现去重
-                    # NOTE: K线数据库只存储 mainnet 数据，testnet 数据实时获取不存储
+                    # SQLON CONFLICT DO NOTHING
+                    # NOTE: K mainnet ，testnet 
                     db.execute(text("""
                         INSERT INTO crypto_klines (
                             exchange, symbol, market, timestamp, period, datetime_str,
@@ -151,7 +151,7 @@ class KlineDataService:
             return False
 
     async def get_data_coverage(self, symbols: List[str] = None) -> List[Dict[str, Any]]:
-        """获取数据覆盖情况"""
+        """"""
         self._ensure_initialized()
 
         try:
@@ -182,12 +182,12 @@ class KlineDataService:
         end_time: datetime,
         period: str = "1m"
     ) -> List[tuple]:
-        """检测缺失的数据时间段"""
+        """"""
         self._ensure_initialized()
 
         try:
             with SessionLocal() as db:
-                # 获取现有的时间戳
+                # 
                 result = db.execute(text("""
                     SELECT timestamp FROM crypto_klines
                     WHERE exchange = :exchange AND symbol = :symbol
@@ -203,14 +203,14 @@ class KlineDataService:
 
                 existing_timestamps = {row[0] for row in result}
 
-                # 生成期望的时间戳序列（1分钟间隔）
+                # （1）
                 expected_timestamps = []
                 current = start_time
                 while current <= end_time:
                     expected_timestamps.append(int(current.timestamp()))
                     current += timedelta(minutes=1)
 
-                # 找出缺失的时间段
+                # 
                 missing_ranges = []
                 range_start = None
 
@@ -222,11 +222,11 @@ class KlineDataService:
                         if range_start is not None:
                             missing_ranges.append((
                                 datetime.fromtimestamp(range_start),
-                                datetime.fromtimestamp(ts - 60)  # 前一分钟
+                                datetime.fromtimestamp(ts - 60)  # 
                             ))
                             range_start = None
 
-                # 处理最后一个缺失段
+                # 
                 if range_start is not None:
                     missing_ranges.append((
                         datetime.fromtimestamp(range_start),
@@ -240,15 +240,15 @@ class KlineDataService:
             return []
 
     def get_supported_symbols(self) -> List[str]:
-        """获取当前交易所支持的交易对"""
+        """"""
         self._ensure_initialized()
         return self.collector.get_supported_symbols()
 
     async def refresh_exchange_config(self):
-        """刷新交易所配置（当用户切换交易所时调用）"""
+        """（）"""
         self._initialized = False
         await self.initialize()
 
 
-# 全局服务实例
+# 
 kline_service = KlineDataService()

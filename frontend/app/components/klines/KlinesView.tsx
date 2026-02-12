@@ -53,7 +53,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
   const marketDataIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const taskCheckIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // 页面可见性监听
+  // 
   useEffect(() => {
     const handleVisibilityChange = () => {
       setIsPageVisible(!document.hidden)
@@ -63,17 +63,17 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [])
 
-  // 获取 watchlist 和初始任务检查
+  //  watchlist 
   useEffect(() => {
     fetchWatchlist()
-    checkCurrentTask() // 初始检查一次是否有任务
+    checkCurrentTask() // 
   }, [])
 
-  // 获取市场数据
+  // 
   useEffect(() => {
     if (watchlistSymbols.length > 0 && isPageVisible) {
       fetchMarketData()
-      marketDataIntervalRef.current = setInterval(fetchMarketData, 60000) // 改为60秒
+      marketDataIntervalRef.current = setInterval(fetchMarketData, 60000) // 60
     }
 
     return () => {
@@ -84,10 +84,10 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
     }
   }, [watchlistSymbols, isPageVisible])
 
-  // 轮询当前任务状态 - 只在有活动任务时轮询
+  //  - 
   useEffect(() => {
     if (isPageVisible && currentTask) {
-      taskCheckIntervalRef.current = setInterval(checkCurrentTask, 5000) // 有任务时5秒检查一次
+      taskCheckIntervalRef.current = setInterval(checkCurrentTask, 5000) // 5
     }
 
     return () => {
@@ -98,7 +98,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
     }
   }, [isPageVisible, currentTask])
 
-  // 组件卸载时清理所有定时器
+  // 
   useEffect(() => {
     return () => {
       if (marketDataIntervalRef.current) {
@@ -155,7 +155,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
       const data = await response.json()
       const tasks = data.tasks || []
 
-      // 找到正在运行或等待的任务
+      // 
       const activeTask = tasks.find((t: BackfillTask) =>
         t.status === 'running' || t.status === 'pending'
       )
@@ -163,13 +163,13 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
       if (activeTask) {
         setCurrentTask(activeTask)
       } else {
-        // 检查是否有刚完成的任务需要删除
+        // 
         const completedTask = tasks.find((t: BackfillTask) => t.status === 'completed')
         if (completedTask && currentTask?.task_id === completedTask.task_id) {
-          // 删除已完成的任务
+          // 
           await fetch(`/api/klines/backfill-tasks/${completedTask.task_id}`, {
             method: 'DELETE'
-          }).catch(() => {}) // 忽略删除错误
+          }).catch(() => {}) // 
         }
         setCurrentTask(null)
       }
@@ -199,7 +199,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
       })
 
       if (response.ok) {
-        // 立即检查任务状态
+        // 
         setTimeout(checkCurrentTask, 500)
       }
     } catch (error) {
@@ -222,7 +222,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
     return value.toLocaleString()
   }
 
-  // 渲染按钮或进度条
+  // 
   const renderBackfillButton = () => {
     if (currentTask) {
       const progress = currentTask.progress || 0
@@ -232,12 +232,12 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
       return (
         <div className="w-full space-y-1">
           <div className="relative w-full h-8 bg-muted rounded-md overflow-hidden">
-            {/* 进度条背景 */}
+            {/*  */}
             <div
               className="absolute inset-y-0 left-0 bg-primary/80 transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
-            {/* 进度文字 */}
+            {/*  */}
             <div className="absolute inset-0 flex items-center justify-center text-xs font-medium">
               <span className={progress > 50 ? 'text-primary-foreground' : 'text-foreground'}>
                 {currentTask.symbol} ({collected}/{total}) {progress}%
@@ -270,7 +270,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
 
   return (
     <div className="flex flex-col md:flex-row h-full w-full gap-4 overflow-hidden pb-16 md:pb-0">
-      {/* 左侧 70%：选择区 + 市场数据 + 指标 + K线图 */}
+      {/*  70%： +  +  + K */}
       <div className="flex flex-col flex-1 md:flex-[7] min-w-0 space-y-4 overflow-hidden">
         {/* Mobile: Simplified selector bar */}
         <div className="md:hidden flex items-center gap-2 px-2 py-2 bg-background border-b">
@@ -618,7 +618,7 @@ export default function KlinesView({ onAccountUpdated }: KlinesViewProps) {
         </Card>
       </div>
 
-      {/* 右侧 30%：AI Analysis 独立列 - Hidden on mobile */}
+      {/*  30%：AI Analysis  - Hidden on mobile */}
       <div className="hidden md:flex flex-col flex-[3] min-w-[300px] space-y-4">
         <Card className="flex-1 overflow-hidden">
           <CardHeader className="py-3">

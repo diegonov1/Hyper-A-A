@@ -405,7 +405,7 @@ export default function AssetCurve({
       const shouldHighlight = !hoveredAccountId || isHovered
       const pulseIteration = accountId != null ? logoPulseMap.get(accountId) ?? 0 : 0
 
-      const size = 32 // 固定大小，不再缩放
+      const size = 32 // ，
       const logoX = cx - size / 2
       const logoY = cy - size / 2
       const labelX = cx + size / 2 + 2

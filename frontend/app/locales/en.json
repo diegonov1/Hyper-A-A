@@ -537,7 +537,7 @@
   "trader": {
     "title": "AI Trader Management",
     "subtitle": "Manage your AI traders and configure trading strategies",
-    "welcomeTitle": "Welcome to Hyper Alpha Arena!",
+    "welcomeTitle": "Welcome to Binance Trading Bot!",
     "welcomeSubtitle": "Let's set up your first AI trader",
     "setupTitle": "Setup Your AI Trader",
     "setupDesc": "We've created a default AI trader for you. To start trading, you need to:",

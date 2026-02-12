@@ -620,7 +620,7 @@ wheels = [
 ]
 
 [[package]]
-name = "hyper-alpha-arena-backend"
+name = "binance-trading-bot-backend"
 version = "0.2.0"
 source = { editable = "." }
 dependencies = [

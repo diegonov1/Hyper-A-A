@@ -1,5 +1,5 @@
 {
-  "name": "hyper-alpha-arena",
+  "name": "binance-trading-bot",
   "private": true,
   "scripts": {
     "dev": "concurrently \"pnpm run dev:backend\" \"pnpm run dev:frontend\"",

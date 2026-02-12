@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "hyper-alpha-arena-backend"
+name = "binance-trading-bot-backend"
 version = "0.5.0"
 dependencies = [
     "fastapi>=0.104.0",

@@ -62,13 +62,13 @@ class MarketStatusResponse(BaseModel):
 
 
 @router.get("/price/{symbol}", response_model=PriceResponse)
-async def get_crypto_price(symbol: str, market: str = "US"):
+async def get_crypto_price(symbol: str, market: str = "CRYPTO"):
     """
     Get latest crypto price
 
     Args:
-        symbol: crypto symbol, such as 'MSFT'
-        market: Market symbol, default 'US'
+        symbol: crypto symbol, such as 'BTC'
+        market: Exchange/market selector, default 'CRYPTO'
 
     Returns:
         Response containing latest price
@@ -95,7 +95,7 @@ async def get_crypto_price(symbol: str, market: str = "US"):
 
 
 @router.get("/prices", response_model=List[PriceResponse])
-async def get_multiple_prices(symbols: str, market: str = "hyperliquid"):
+async def get_multiple_prices(symbols: str, market: str = "CRYPTO"):
     """
     Get latest prices for multiple cryptos in batch
 
@@ -145,7 +145,7 @@ async def get_multiple_prices(symbols: str, market: str = "hyperliquid"):
 @router.get("/kline/{symbol}", response_model=KlineResponse)
 async def get_crypto_kline(
     symbol: str, 
-    market: str = "US",
+    market: str = "CRYPTO",
     period: str = "1m",
     count: int = 100
 ):
@@ -153,8 +153,8 @@ async def get_crypto_kline(
     Get crypto K-line data
 
     Args:
-        symbol: crypto symbol, such as 'MSFT'
-        market: Market symbol, default 'US'
+        symbol: crypto symbol, such as 'BTC'
+        market: Exchange/market selector, default 'CRYPTO'
         period: Time period, supports '1m', '5m', '15m', '30m', '1h', '1d'
         count: Number of data points, default 100, max 500
 
@@ -214,13 +214,13 @@ async def get_crypto_kline(
 
 
 @router.get("/status/{symbol}", response_model=MarketStatusResponse)
-async def get_crypto_market_status(symbol: str, market: str = "US"):
+async def get_crypto_market_status(symbol: str, market: str = "CRYPTO"):
     """
     Get crypto market status
 
     Args:
-        symbol: crypto symbol, such as 'MSFT'
-        market: Market symbol, default 'US'
+        symbol: crypto symbol, such as 'BTC'
+        market: Exchange/market selector, default 'CRYPTO'
 
     Returns:
         Response containing market status
@@ -250,14 +250,14 @@ async def market_data_health():
     """
     try:
         # Test getting a price to check if service is running normally
-        test_price = get_last_price("MSFT", "US")
+        test_price = get_last_price("BTC", "CRYPTO")
         
         import time
         return {
             "status": "healthy",
             "timestamp": int(time.time() * 1000),
             "test_price": {
-                "symbol": "MSFT.US",
+                "symbol": "BTC",
                 "price": test_price
             },
             "message": "Market data service is running normally"
@@ -272,7 +272,7 @@ async def market_data_health():
         }
 
 class KlineWithIndicatorsResponse(BaseModel):
-    """K线数据+技术指标响应模型"""
+    """K+"""
     symbol: str
     market: str
     period: str
@@ -284,42 +284,42 @@ class KlineWithIndicatorsResponse(BaseModel):
 @router.get("/kline-with-indicators/{symbol}", response_model=KlineWithIndicatorsResponse)
 async def get_kline_with_indicators(
     symbol: str,
-    market: str = "hyperliquid",
+    market: str = "CRYPTO",
     period: str = "1h",
     count: int = 500,
     indicators: str = ""
 ):
     """
-    获取K线数据并计算技术指标
+    K
 
     Args:
-        symbol: 币种符号，如 'BTC'
-        market: 市场，默认 'hyperliquid'
-        period: 时间周期，如 '1h'
-        count: 数据数量，默认500
-        indicators: 指标列表，逗号分隔，如 'EMA20,EMA50,MACD,RSI14'
+        symbol: ， 'BTC'
+        market: /， 'CRYPTO'
+        period: ， '1h'
+        count: ，500
+        indicators: ，， 'EMA20,EMA50,MACD,RSI14'
 
     Returns:
-        包含K线数据和技术指标的响应
+        K
     """
     try:
         from services.technical_indicators import calculate_indicators
 
-        # 参数验证
+        # 
         valid_periods = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '8h', '12h', '1d', '3d', '1w', '1M']
         if period not in valid_periods:
             raise HTTPException(
                 status_code=400,
-                detail=f"不支持的时间周期，支持的周期: {', '.join(valid_periods)}"
+                detail=f"，: {', '.join(valid_periods)}"
             )
 
         if count <= 0 or count > 500:
-            raise HTTPException(status_code=400, detail="数据数量必须在1-500之间")
+            raise HTTPException(status_code=400, detail="1-500")
 
-        # 获取K线数据
+        # K
         kline_data = get_kline_data(symbol, market, period, count)
 
-        # 转换K线数据格式
+        # K
         kline_items = []
         for item in kline_data:
             dt_value = item.get('datetime')
@@ -341,7 +341,7 @@ async def get_kline_with_indicators(
                 percent=item.get('percent')
             ))
 
-        # 计算技术指标
+        # 
         indicator_results = {}
         if indicators.strip():
             indicator_list = [ind.strip() for ind in indicators.split(',') if ind.strip()]
@@ -360,24 +360,24 @@ async def get_kline_with_indicators(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"获取K线和指标数据失败: {e}")
-        raise HTTPException(status_code=500, detail=f"获取K线和指标数据失败: {str(e)}")
+        logger.error(f"K: {e}")
+        raise HTTPException(status_code=500, detail=f"K: {str(e)}")
 
 
 @router.get("/indicators/available")
 async def get_available_indicators():
     """
-    获取支持的技术指标列表
+    
 
     Returns:
-        支持的指标列表
+        
     """
     try:
         from services.technical_indicators import get_available_indicators
         return {
             "indicators": get_available_indicators(),
-            "message": "支持的技术指标列表"
+            "message": ""
         }
     except Exception as e:
-        logger.error(f"获取指标列表失败: {e}")
-        raise HTTPException(status_code=500, detail=f"获取指标列表失败: {str(e)}")
+        logger.error(f": {e}")
+        raise HTTPException(status_code=500, detail=f": {str(e)}")

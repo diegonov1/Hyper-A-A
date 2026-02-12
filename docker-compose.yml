@@ -37,6 +37,9 @@ services:
       # Hyperliquid Builder Fee Configuration
       HYPERLIQUID_BUILDER_ADDRESS: "0x012E82f81e506b8f0EF69FF719a6AC65822b5924"
       HYPERLIQUID_BUILDER_FEE: "30"
+      # Binance demo credentials (optional, loaded from project .env)
+      DEMO_BINANCE_API_KEY: ${DEMO_BINANCE_API_KEY-}
+      DEMO_BINANCE_SECRET_KEY: ${DEMO_BINANCE_SECRET_KEY-}
       # Explicitly disable all proxy settings in container
       HTTP_PROXY: ""
       HTTPS_PROXY: ""

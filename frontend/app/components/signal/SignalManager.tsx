@@ -29,6 +29,7 @@ import AiSignalChatModal from './AiSignalChatModal'
 import MarketRegimeConfig from './MarketRegimeConfig'
 import PacmanLoader from '../ui/pacman-loader'
 import { useCollectionDays } from '@/lib/useCollectionDays'
+import { useCurrentExchange } from '@/contexts/ExchangeContext'
 
 // Types
 interface SignalDefinition {
@@ -291,6 +292,7 @@ const TIME_WINDOWS = [
 
 export default function SignalManager() {
   const { t } = useTranslation()
+  const currentExchange = useCurrentExchange()
   const collectionDays = useCollectionDays()
   const [signals, setSignals] = useState<SignalDefinition[]>([])
   const [pools, setPools] = useState<SignalPool[]>([])
@@ -650,7 +652,7 @@ export default function SignalManager() {
       // Step 1: Fetch K-lines from market API (ensures fresh data)
       // Use 500 klines to match the K-line page and provide more historical context
       const klineRes = await fetch(
-        `/api/market/kline-with-indicators/${symbol}?market=hyperliquid&period=${signalTimeWindow}&count=500`
+        `/api/market/kline-with-indicators/${symbol}?market=${currentExchange}&period=${signalTimeWindow}&count=500`
       )
       if (!klineRes.ok) throw new Error('Failed to fetch K-line data')
       const klineData = await klineRes.json()
@@ -709,7 +711,7 @@ export default function SignalManager() {
     try {
       // Step 1: Fetch K-lines
       const klineRes = await fetch(
-        `/api/market/kline-with-indicators/${symbol}?market=hyperliquid&period=${poolTimeWindow}&count=500`
+        `/api/market/kline-with-indicators/${symbol}?market=${currentExchange}&period=${poolTimeWindow}&count=500`
       )
       if (!klineRes.ok) throw new Error('Failed to fetch K-line data')
       const klineData = await klineRes.json()
@@ -819,7 +821,7 @@ export default function SignalManager() {
     try {
       // Fetch K-lines
       const klineRes = await fetch(
-        `/api/market/kline-with-indicators/${symbol}?market=hyperliquid&period=${tempTimeWindow}&count=500`
+        `/api/market/kline-with-indicators/${symbol}?market=${currentExchange}&period=${tempTimeWindow}&count=500`
       )
       if (!klineRes.ok) throw new Error('Failed to fetch K-line data')
       const klineData = await klineRes.json()
@@ -874,7 +876,7 @@ export default function SignalManager() {
     try {
       // Fetch K-lines with new timeframe
       const klineRes = await fetch(
-        `/api/market/kline-with-indicators/${previewSymbol}?market=hyperliquid&period=${newTimeframe}&count=500`
+        `/api/market/kline-with-indicators/${previewSymbol}?market=${currentExchange}&period=${newTimeframe}&count=500`
       )
       if (!klineRes.ok) throw new Error('Failed to fetch K-line data')
       const klineData = await klineRes.json()

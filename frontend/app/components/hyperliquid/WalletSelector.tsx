@@ -1,8 +1,8 @@
 /**
- * WalletSelector - Hyperliquid钱包选择器组件
+ * WalletSelector - Hyperliquid
  *
- * 用于Trade页面，显示所有可用的Hyperliquid钱包（包括testnet和mainnet）
- * 不受全局TradingMode限制，由用户手动选择要操作的钱包
+ * Trade，Hyperliquid（testnetmainnet）
+ * TradingMode，
  */
 import { useState, useEffect } from 'react'
 import { AlertTriangle } from 'lucide-react'
@@ -48,7 +48,7 @@ export default function WalletSelector({
       const data = await response.json()
       setWallets(data)
 
-      // 自动选择第一个active钱包
+      // active
       if (data.length > 0 && !selectedWalletId) {
         const firstActive = data.find((w: WalletOption) => w.is_active)
         if (firstActive) {

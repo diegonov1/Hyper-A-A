@@ -1,7 +1,6 @@
 /**
- * i18n configuration for Hyper Alpha Arena
+ * i18n configuration for Binance Trading Bot
  * - Default language: English
- * - Auto-detect browser language (switch to Chinese if zh-*)
  * - Persist user's manual selection to localStorage
  * - Fallback to English for missing translations
  */
@@ -11,11 +10,9 @@ import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 
 import en from './locales/en.json'
-import zh from './locales/zh.json'
 
 const resources = {
   en: { translation: en },
-  zh: { translation: zh }
 }
 
 i18n
@@ -24,7 +21,7 @@ i18n
   .init({
     resources,
     fallbackLng: 'en',
-    supportedLngs: ['en', 'zh'],
+    supportedLngs: ['en'],
 
     // Language detection options
     detection: {

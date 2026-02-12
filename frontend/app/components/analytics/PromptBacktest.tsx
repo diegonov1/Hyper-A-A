@@ -541,7 +541,7 @@ export default function PromptBacktest({
             <div className="flex items-center justify-between mt-3 pt-3 border-t">
               <div className="text-xs text-muted-foreground">
                 {filteredRecords.length} {t('promptBacktest.records', 'records')}
-                {selectedIds.size > 0 && ` · ${selectedIds.size} ${t('promptBacktest.selected', 'selected')}`}
+                {selectedIds.size > 0 && ` - ${selectedIds.size} ${t('promptBacktest.selected', 'selected')}`}
               </div>
               <div className="flex gap-2">
                 {hasMore && (

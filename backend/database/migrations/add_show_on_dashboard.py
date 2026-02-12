@@ -9,7 +9,7 @@ while keeping data collection active.
 - False: Trader hidden from Dashboard views
 
 Usage:
-    cd /home/wwwroot/hyper-alpha-arena-prod/backend
+    cd /home/wwwroot/binance-trading-bot-prod/backend
     source .venv/bin/activate
     python database/migrations/add_show_on_dashboard.py
 """

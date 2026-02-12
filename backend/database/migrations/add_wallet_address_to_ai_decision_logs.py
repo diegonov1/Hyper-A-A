@@ -2,7 +2,7 @@
 Add wallet_address column to ai_decision_logs table.
 
 Usage:
-    cd /home/wwwroot/hyper-alpha-arena-prod/backend
+    cd /home/wwwroot/binance-trading-bot-prod/backend
     source .venv/bin/activate
     python database/migrations/add_wallet_address_to_ai_decision_logs.py
 """

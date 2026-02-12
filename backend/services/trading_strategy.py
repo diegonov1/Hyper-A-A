@@ -21,8 +21,7 @@ from repositories.strategy_repo import (
 )
 from services.sampling_pool import sampling_pool
 from services.trading_commands import (
-    place_ai_driven_crypto_order,
-    place_ai_driven_hyperliquid_order,
+    place_ai_driven_exchange_order,
 )
 from services.hyperliquid_symbol_service import get_selected_symbols as get_hyperliquid_selected_symbols
 
@@ -265,10 +264,9 @@ class StrategyManager:
                     logger.debug(f"Account {account_id} auto trading disabled, skipping strategy execution")
                     return
 
-            # Execute AI trading decision with trigger context
-            logger.info(f"Account {account_id} executing Hyperliquid trading (trigger: {trigger_type})")
-            from services.trading_commands import place_ai_driven_hyperliquid_order
-            place_ai_driven_hyperliquid_order(account_id=account_id, trigger_context=trigger_context)
+            # Execute AI trading decision with exchange routing.
+            logger.info(f"Account {account_id} executing exchange-routed trading (trigger: {trigger_type})")
+            place_ai_driven_exchange_order(account_id=account_id, trigger_context=trigger_context)
 
         except Exception as e:
             logger.error(f"Error executing strategy for account {account_id}: {e}")
@@ -467,8 +465,8 @@ def _execute_strategy_direct(account_id: int, symbol: str, event_time: datetime,
 
         # Execute the trade
         if is_hyper:
-            logger.info(f"[DirectStrategy] Executing Hyperliquid trade for account {account_id}")
-            place_ai_driven_hyperliquid_order(account_id=account_id)
+            logger.info(f"[DirectStrategy] Executing exchange-routed trade for account {account_id}")
+            place_ai_driven_exchange_order(account_id=account_id)
         else:
             from services.auto_trader import place_ai_driven_crypto_order
             place_ai_driven_crypto_order(max_ratio=0.2, account_id=account_id)

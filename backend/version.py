@@ -1,5 +1,5 @@
 """
-Hyper Alpha Arena Version Information
+Binance Trading Bot Version Information
 """
 
 __version__ = "0.7.0"

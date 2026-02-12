@@ -137,7 +137,7 @@ def _format_indicators_summary(indicators: Dict[str, Any]) -> str:
             if isinstance(values, list) and len(values) > 0:
                 latest = values[-1] if values[-1] is not None else 'N/A'
                 ma_indicators.append(f"{key}: ${latest:.2f}" if isinstance(latest, (int, float)) else f"{key}: {latest}")
-                # 最近序列
+                # 
                 tail_values = [v for v in values[-tail_len:] if isinstance(v, (int, float, float))]
                 if tail_values:
                     ma_indicators.append(f"{key} last {len(tail_values)}: {', '.join(f'{v:.2f}' for v in tail_values)}")

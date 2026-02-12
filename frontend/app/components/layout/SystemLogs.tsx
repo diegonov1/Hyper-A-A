@@ -531,7 +531,7 @@ useEffect(() => {
                           </div>
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {action.environment.toUpperCase()} · {action.wallet_address}
+                          {action.environment.toUpperCase()} - {action.wallet_address}
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-sm">
                           {action.symbol && (

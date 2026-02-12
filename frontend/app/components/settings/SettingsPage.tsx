@@ -25,7 +25,7 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('watchlist')
 
   // Language state
-  const currentLang = i18n.language === 'zh' ? 'zh' : 'en'
+  const currentLang = 'en'
 
   // Watchlist state
   const [availableSymbols, setAvailableSymbols] = useState<HyperliquidSymbolMeta[]>([])
@@ -44,7 +44,7 @@ export default function SettingsPage() {
   const [retentionError, setRetentionError] = useState<string | null>(null)
   const [retentionSuccess, setRetentionSuccess] = useState<string | null>(null)
 
-  const toggleLanguage = (lang: 'en' | 'zh') => {
+  const toggleLanguage = (lang: 'en') => {
     i18n.changeLanguage(lang)
   }
 
@@ -163,11 +163,10 @@ export default function SettingsPage() {
         <span className="text-sm font-medium">{t('settings.language', 'Language')}</span>
         <select
           value={currentLang}
-          onChange={(e) => toggleLanguage(e.target.value as 'en' | 'zh')}
+          onChange={(e) => toggleLanguage(e.target.value as 'en')}
           className="border rounded px-2 py-1 text-sm bg-background"
         >
           <option value="en">English</option>
-          <option value="zh">中文</option>
         </select>
       </div>
 

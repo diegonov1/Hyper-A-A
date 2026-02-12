@@ -1,5 +1,5 @@
 """
-Default and Pro prompt templates for Hyper Alpha Arena.
+Default and Pro prompt templates for Binance Trading Bot.
 """
 
 # Baseline prompt (simplest version)

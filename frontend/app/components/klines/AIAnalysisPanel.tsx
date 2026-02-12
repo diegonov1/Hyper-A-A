@@ -52,7 +52,7 @@ interface AIAnalysisPanelProps {
   selectedIndicators?: string[]
   selectedFlowIndicators?: string[]
   onAnalysisComplete?: () => void
-  // 允许上层传入账户列表，暂无使用，预留扩展
+  // ，，
   accounts?: AITrader[]
 }
 
@@ -134,12 +134,12 @@ export default function AIAnalysisPanel({
     }
   }
 
-  // 预加载 trader 列表，避免首次打开等待
+  //  trader ，
   useEffect(() => {
     fetchTraders()
   }, [])
 
-  // 加载选中钱包的仓位
+  // 
   useEffect(() => {
     const loadPositions = async () => {
       if (!selectedWallet) {
@@ -148,7 +148,7 @@ export default function AIAnalysisPanel({
       }
       try {
         setPositionsLoading(true)
-        // 复用 hyperliquid API 映射，获取完整字段
+        //  hyperliquid API ，
         const data = await getHyperliquidPositions(selectedWallet.account_id, selectedWallet.environment)
         const mapped = (data.positions || []).map((p: any) => ({
           symbol: p.coin || p.symbol || symbol,
@@ -186,7 +186,7 @@ export default function AIAnalysisPanel({
     try {
       const slicedKlines = klines.slice(-klineLimit)
 
-      // 前端计算MA，避免后端未返回时为空
+      // MA，
       const computeMA = (data: any[], period: number) => {
         if (!data || data.length < period) return []
         const closes = data.map((k) => Number(k.close || k.c))
@@ -196,7 +196,7 @@ export default function AIAnalysisPanel({
           const avg = slice.reduce((a, b) => a + b, 0) / period
           ma.push(Number.isFinite(avg) ? Number(avg.toFixed(4)) : 0)
         }
-        // 与对应的时间对齐：前 period-1 为空，后续有值
+        // ： period-1 ，
         const padded = Array(period - 1).fill(null).concat(ma)
         return padded
       }
@@ -242,9 +242,9 @@ export default function AIAnalysisPanel({
           volume: k.volume || 0
         })),
         indicators: {
-          // 直接携带现有指标
+          // 
           ...indicators,
-          // 补充前端计算的MA（如果后端未返回）
+          // MA（）
           ...(indicators?.MA5 && indicators.MA5.length ? {} : { MA5: ma5 }),
           ...(indicators?.MA10 && indicators.MA10.length ? {} : { MA10: ma10 }),
           ...(indicators?.MA20 && indicators.MA20.length ? {} : { MA20: ma20 }),
@@ -366,11 +366,11 @@ export default function AIAnalysisPanel({
     }
   }
 
-  // 获取分析摘要（第一段）
+  // （）
   const getAnalysisSummary = (analysis: string) => {
     if (!analysis) return ''
 
-    // 找到第一个 ## 标题后的内容作为摘要
+    //  ## 
     const lines = analysis.split('\n')
     let summaryLines = []
     let foundFirstSection = false
@@ -382,7 +382,7 @@ export default function AIAnalysisPanel({
         summaryLines.push(line)
       } else if (foundFirstSection && line.trim()) {
         summaryLines.push(line)
-        if (summaryLines.length >= 5) break // 限制摘要长度
+        if (summaryLines.length >= 5) break // 
       }
     }
 

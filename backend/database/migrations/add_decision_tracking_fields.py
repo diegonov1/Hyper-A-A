@@ -11,7 +11,7 @@ Fields added:
 - pnl_updated_at: When PnL was last updated
 
 Usage:
-    cd /home/wwwroot/hyper-alpha-arena-prod/backend
+    cd /home/wwwroot/binance-trading-bot-prod/backend
     source .venv/bin/activate
     python database/migrations/add_decision_tracking_fields.py
 """

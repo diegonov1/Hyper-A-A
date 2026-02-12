@@ -5,7 +5,7 @@ Run from backend directory: python3 -m program_trader.test_module
 """
 
 import sys
-sys.path.insert(0, '/home/wwwroot/hyper-alpha-arena-prod/backend')
+sys.path.insert(0, '/home/wwwroot/binance-trading-bot-prod/backend')
 
 from program_trader import (
     validate_strategy_code,

@@ -567,14 +567,12 @@ def test_run_program(request: TestRunRequest, db: Session = Depends(get_db)):
 def get_program_dev_guide(lang: str = "en") -> dict:
     """
     Get Program Trader development guide documentation.
-    Supports English (default) and Chinese.
+    Serves English documentation in this fork.
     """
     import os
 
-    if lang == "zh":
-        filename = "PROGRAM_DEV_GUIDE_ZH.md"
-    else:
-        filename = "PROGRAM_DEV_GUIDE.md"
+    _ = lang
+    filename = "PROGRAM_DEV_GUIDE.md"
 
     doc_path = os.path.join(
         os.path.dirname(os.path.dirname(__file__)),

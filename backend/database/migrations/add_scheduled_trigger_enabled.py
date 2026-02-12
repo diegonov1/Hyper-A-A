@@ -8,7 +8,7 @@ while keeping signal pool triggers active.
 - False: Scheduled trigger disabled, AI only runs on signal pool triggers
 
 Usage:
-    cd /home/wwwroot/hyper-alpha-arena-prod/backend
+    cd /home/wwwroot/binance-trading-bot-prod/backend
     source .venv/bin/activate
     python database/migrations/add_scheduled_trigger_enabled.py
 """

@@ -15,16 +15,16 @@ def migrate():
     engine = create_engine(DATABASE_URL)
 
     with engine.connect() as conn:
-        # 1. 为crypto_klines表添加唯一约束（如果不存在）
+        # 1. crypto_klines（）
         conn.execute(text("""
             DO $$
             BEGIN
-                -- 检查唯一约束是否已存在
+                -- 
                 IF NOT EXISTS (
                     SELECT 1 FROM pg_constraint
                     WHERE conname = 'uq_crypto_klines_unique'
                 ) THEN
-                    -- 添加唯一约束防止重复数据
+                    -- 
                     ALTER TABLE crypto_klines
                     ADD CONSTRAINT uq_crypto_klines_unique
                     UNIQUE (exchange, symbol, timestamp, period);
@@ -32,18 +32,18 @@ def migrate():
             END $$;
         """))
 
-        # 2. 优化crypto_klines表的索引
+        # 2. crypto_klines
         conn.execute(text("""
-            -- 为常用查询创建复合索引
+            -- 
             CREATE INDEX IF NOT EXISTS idx_crypto_klines_exchange_symbol_time
             ON crypto_klines(exchange, symbol, timestamp DESC);
 
-            -- 为时间范围查询优化
+            -- 
             CREATE INDEX IF NOT EXISTS idx_crypto_klines_timestamp_range
             ON crypto_klines(timestamp DESC) WHERE exchange IS NOT NULL;
         """))
 
-        # 3. 创建K线采集任务表
+        # 3. K
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS kline_collection_tasks (
                 id SERIAL PRIMARY KEY,
@@ -62,7 +62,7 @@ def migrate():
             )
         """))
 
-        # 4. 为任务表创建索引
+        # 4. 
         conn.execute(text("""
             CREATE INDEX IF NOT EXISTS idx_kline_tasks_status
             ON kline_collection_tasks(status, created_at DESC);
@@ -71,7 +71,7 @@ def migrate():
             ON kline_collection_tasks(exchange, symbol);
         """))
 
-        # 5. 创建数据覆盖统计视图（用于快速查询数据完整性）
+        # 5. （）
         conn.execute(text("""
             CREATE OR REPLACE VIEW kline_coverage_stats AS
             SELECT
@@ -92,11 +92,11 @@ def migrate():
         """))
 
         conn.commit()
-        print("✅ K线采集系统数据库结构创建成功")
-        print("   - crypto_klines表添加唯一约束")
-        print("   - 创建kline_collection_tasks任务表")
-        print("   - 添加性能优化索引")
-        print("   - 创建数据覆盖统计视图")
+        print("✅ K")
+        print("   - crypto_klines")
+        print("   - kline_collection_tasks")
+        print("   - ")
+        print("   - ")
 
 if __name__ == "__main__":
     migrate()

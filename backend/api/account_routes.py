@@ -999,8 +999,6 @@ async def trigger_ai_trade(
         Trade execution result
     """
     try:
-        from services.trading_commands import place_ai_driven_crypto_order
-
         # Validate account exists and is active
         account = db.query(Account).filter(Account.id == account_id).first()
         if not account:
@@ -1018,90 +1016,12 @@ async def trigger_ai_trade(
         if symbol:
             logger.info(f"  Target symbol: {symbol}")
 
-        # If forcing a specific operation, we need to mock the AI decision
-        samples = None
-        if force_operation:
-            # Prepare mock samples to force specific operation
-            if force_operation.lower() == "close":
-                # For CLOSE operation, we need to find a position to close
-                positions = db.query(Position).filter(
-                    Position.account_id == account_id,
-                    Position.market == "CRYPTO",
-                    Position.available_quantity > 0
-                ).all()
-
-                if not positions:
-                    return {
-                        "success": False,
-                        "message": "No open positions to close",
-                        "account_id": account_id,
-                        "account_name": account.name
-                    }
-
-                # Use the first available position if symbol not specified
-                if not symbol:
-                    symbol = positions[0].symbol
-
-                # Mock AI decision for CLOSE operation
-                samples = [{
-                    "operation": "close",
-                    "symbol": symbol,
-                    "target_portion_of_balance": 1.0,  # Close 100%
-                    "reason": f"Manual CLOSE trigger via API for {account.name}"
-                }]
-
-            elif force_operation.lower() in ["buy", "sell"]:
-                if not symbol:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Symbol is required when forcing {force_operation} operation"
-                    )
-
-                samples = [{
-                    "operation": force_operation.lower(),
-                    "symbol": symbol,
-                    "target_portion_of_balance": 0.2,  # Default 20%
-                    "reason": f"Manual {force_operation.upper()} trigger via API for {account.name}"
-                }]
-
-            elif force_operation.lower() == "hold":
-                samples = [{
-                    "operation": "hold",
-                    "symbol": symbol or "BTC",
-                    "target_portion_of_balance": 0,
-                    "reason": f"Manual HOLD trigger via API for {account.name}"
-                }]
-
-        # Check if account has Hyperliquid environment configured
-        hyperliquid_environment = getattr(account, "hyperliquid_environment", None)
-
-        print(
-            f"[DEBUG] Trigger API: account_id={account_id} "
-            f"hyperliquid_environment={hyperliquid_environment}"
+        from services.trading_commands import place_ai_driven_exchange_order
+        place_ai_driven_exchange_order(
+            account_id=account_id,
+            bypass_auto_trading=True,
+            trigger_context={"trigger_type": "manual", "force_operation": force_operation, "symbol": symbol},
         )
-
-        # Trigger AI trading based on account configuration
-        if hyperliquid_environment in ["testnet", "mainnet"]:
-            print(f"[DEBUG] ENTERING HYPERLIQUID BRANCH")
-            try:
-                from services.trading_commands import place_ai_driven_hyperliquid_order
-                print(f"[DEBUG] Successfully imported place_ai_driven_hyperliquid_order")
-                print(f"[DEBUG] Calling place_ai_driven_hyperliquid_order for account {account_id}")
-                place_ai_driven_hyperliquid_order(
-                    account_id=account_id,
-                    bypass_auto_trading=True,
-                )
-                print(f"[DEBUG] place_ai_driven_hyperliquid_order completed for account {account_id}")
-            except Exception as hyperliquid_err:
-                print(f"[DEBUG] Error in Hyperliquid trading: {hyperliquid_err}")
-                logger.error(f"Error in Hyperliquid trading for account {account_id}: {hyperliquid_err}", exc_info=True)
-        else:
-            place_ai_driven_crypto_order(
-                max_ratio=0.2,
-                account_id=account_id,
-                symbol=symbol,
-                samples=samples
-            )
 
         # Check for new trades
         recent_trades = db.query(Trade).filter(

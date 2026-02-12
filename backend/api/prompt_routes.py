@@ -651,15 +651,13 @@ def get_variables_reference(lang: str = "en") -> dict:
     Used by frontend to display the strategy parameter guide.
 
     Args:
-        lang: Language code ("en" for English, "zh" for Chinese)
+        lang: Language code (currently "en" only)
     """
     import os
 
-    # Select document based on language
-    if lang == "zh":
-        filename = "PROMPT_VARIABLES_REFERENCE_ZH.md"
-    else:
-        filename = "PROMPT_VARIABLES_REFERENCE.md"
+    # Chinese reference has been removed from this fork; always serve English.
+    _ = lang
+    filename = "PROMPT_VARIABLES_REFERENCE.md"
 
     doc_path = os.path.join(
         os.path.dirname(os.path.dirname(__file__)),

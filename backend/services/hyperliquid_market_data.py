@@ -321,7 +321,7 @@ class HyperliquidClient:
                     'percent': float(percent),
                 })
 
-            # Auto-persist data to database (边用边存)
+            # Auto-persist data to database ()
             if persist and klines:
                 try:
                     self._persist_kline_data(symbol, period, klines)

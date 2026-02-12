@@ -77,7 +77,7 @@ interface Order { id: number; order_no: string; symbol: string; name: string; ma
 interface Trade { id: number; order_id: number; account_id: number; symbol: string; name: string; market: string; side: string; price: number; quantity: number; commission: number; trade_time: string }
 
 const PAGE_TITLES: Record<string, string> = {
-  comprehensive: 'Hyper Alpha Arena',
+  comprehensive: 'Binance Trading Bot',
   'system-logs': 'System Logs',
   'prompt-management': 'Prompt Templates',
   'program-trader': 'Programs',

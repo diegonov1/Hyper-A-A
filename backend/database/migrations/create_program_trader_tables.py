@@ -7,7 +7,7 @@ Tables:
 - program_execution_logs: Execution history
 
 Usage:
-    cd /home/wwwroot/hyper-alpha-arena-prod/backend
+    cd /home/wwwroot/binance-trading-bot-prod/backend
     python database/migrations/create_program_trader_tables.py
 """
 import os

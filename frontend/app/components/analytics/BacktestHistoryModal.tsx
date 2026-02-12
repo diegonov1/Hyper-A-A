@@ -206,7 +206,7 @@ export default function BacktestHistoryModal({
                         </Badge>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        {formatTime(task.created_at)} · {task.total_count} items
+                        {formatTime(task.created_at)} - {task.total_count} items
                       </div>
                     </div>
                   ))

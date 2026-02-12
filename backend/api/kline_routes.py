@@ -1,5 +1,5 @@
 """
-K线数据管理API路由
+KAPI
 """
 
 import asyncio
@@ -28,9 +28,9 @@ def get_db():
         db.close()
 
 
-# Pydantic模型
+# Pydantic
 class BackfillRequest(BaseModel):
-    exchange: Optional[str] = None  # 如果不指定，使用当前配置的交易所
+    exchange: Optional[str] = None  # ，
     symbols: List[str]
     start_time: datetime
     end_time: datetime
@@ -65,20 +65,20 @@ class CoverageResponse(BaseModel):
 
 @router.get("/coverage", response_model=List[CoverageResponse])
 async def get_data_coverage(
-    symbols: Optional[str] = None,  # 逗号分隔的交易对列表
+    symbols: Optional[str] = None,  # 
     db: Session = Depends(get_db)
 ):
-    """获取K线数据覆盖情况"""
+    """K"""
     try:
-        # 确保服务已初始化
+        # 
         await kline_service.initialize()
 
-        # 解析交易对参数
+        # 
         symbol_list = None
         if symbols:
             symbol_list = [s.strip().upper() for s in symbols.split(",")]
 
-        # 获取覆盖情况
+        # 
         coverage_data = await kline_service.get_data_coverage(symbol_list)
 
         return [CoverageResponse(**item) for item in coverage_data]
@@ -90,7 +90,7 @@ async def get_data_coverage(
 
 @router.get("/backfill-tasks")
 async def get_backfill_tasks(db: Session = Depends(get_db)):
-    """获取补漏任务列表"""
+    """"""
     try:
         tasks = db.query(KlineCollectionTask).order_by(KlineCollectionTask.created_at.desc()).limit(50).all()
         return {"tasks": [{"task_id": t.id, "symbol": t.symbol, "status": t.status, "progress": t.progress or 0, "total_records": t.total_records or 0, "collected_records": t.collected_records or 0} for t in tasks]}
@@ -99,7 +99,7 @@ async def get_backfill_tasks(db: Session = Depends(get_db)):
 
 @router.get("/data")
 async def get_kline_data(symbol: str, period: str = "1m", limit: int = 1000):
-    """获取K线数据"""
+    """K"""
     return {"success": False, "data": [], "message": "K-line data service not implemented yet"}
 
 @router.post("/backfill", response_model=Dict[str, Any])
@@ -108,19 +108,19 @@ async def create_backfill_task(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
-    """创建补漏任务"""
+    """"""
     try:
-        # 确保服务已初始化
+        # 
         await kline_service.initialize()
 
-        # 使用当前配置的交易所（如果未指定）
+        # （）
         exchange = request.exchange or kline_service.exchange_id
 
-        # 验证时间范围
+        # 
         if request.start_time >= request.end_time:
             raise HTTPException(status_code=400, detail="start_time must be before end_time")
 
-        # 限制时间范围（最多30天）
+        # （30）
         max_days = 30
         if (request.end_time - request.start_time).days > max_days:
             raise HTTPException(
@@ -128,7 +128,7 @@ async def create_backfill_task(
                 detail=f"Time range too large. Maximum {max_days} days allowed."
             )
 
-        # 检查是否有任何任务正在运行（全局只允许一个任务）
+        # （）
         existing_active_task = db.query(KlineCollectionTask).filter(
             KlineCollectionTask.status.in_(["pending", "running"])
         ).first()
@@ -139,13 +139,13 @@ async def create_backfill_task(
                 detail=f"A backfill task is already running for {existing_active_task.symbol}. Please wait for it to complete."
             )
 
-        # 创建补漏任务记录
+        # 
         task_ids = []
         skipped_symbols = []
         for symbol in request.symbols:
             symbol_upper = symbol.upper()
 
-            # 检查是否有相同 symbol 的任务正在运行
+            #  symbol 
             existing_task = db.query(KlineCollectionTask).filter(
                 KlineCollectionTask.symbol == symbol_upper,
                 KlineCollectionTask.status.in_(["pending", "running"])
@@ -164,12 +164,12 @@ async def create_backfill_task(
                 status="pending"
             )
             db.add(task)
-            db.flush()  # 获取ID
+            db.flush()  # ID
             task_ids.append(task.id)
 
         db.commit()
 
-        # 启动后台补漏任务
+        # 
         backfill_manager = BackfillManager()
         for task_id in task_ids:
             background_tasks.add_task(backfill_manager.process_task, task_id)
@@ -196,7 +196,7 @@ async def create_backfill_task(
 
 @router.get("/backfill/status/{task_id}", response_model=BackfillTaskResponse)
 async def get_backfill_status(task_id: int, db: Session = Depends(get_db)):
-    """获取补漏任务状态"""
+    """"""
     try:
         task = db.query(KlineCollectionTask).filter(KlineCollectionTask.id == task_id).first()
         if not task:
@@ -230,7 +230,7 @@ async def list_backfill_tasks(
     limit: int = 50,
     db: Session = Depends(get_db)
 ):
-    """获取补漏任务列表"""
+    """"""
     try:
         query = db.query(KlineCollectionTask)
 
@@ -264,7 +264,7 @@ async def list_backfill_tasks(
 
 @router.delete("/backfill-tasks/{task_id}")
 async def delete_backfill_task(task_id: int, db: Session = Depends(get_db)):
-    """删除补漏任务"""
+    """"""
     try:
         task = db.query(KlineCollectionTask).filter(KlineCollectionTask.id == task_id).first()
         if not task:
@@ -285,19 +285,19 @@ async def delete_backfill_task(task_id: int, db: Session = Depends(get_db)):
 @router.get("/gaps/{symbol}")
 async def detect_data_gaps(
     symbol: str,
-    days: int = 7,  # 检查最近几天的数据
+    days: int = 7,  # 
     db: Session = Depends(get_db)
 ):
-    """检测指定交易对的数据缺失"""
+    """"""
     try:
-        # 确保服务已初始化
+        # 
         await kline_service.initialize()
 
-        # 计算时间范围
+        # 
         end_time = datetime.now()
         start_time = end_time - timedelta(days=days)
 
-        # 检测缺失范围
+        # 
         missing_ranges = await kline_service.detect_missing_ranges(
             symbol.upper(), start_time, end_time, "1m"
         )
@@ -330,7 +330,7 @@ async def detect_data_gaps(
 
 @router.get("/supported-symbols")
 async def get_supported_symbols():
-    """获取当前交易所支持的交易对"""
+    """"""
     try:
         await kline_service.initialize()
         symbols = kline_service.get_supported_symbols()

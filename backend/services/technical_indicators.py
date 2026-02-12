@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-技术指标计算服务
-使用pandas-ta库计算各种技术指标
+
+pandas-ta
 """
 
 import pandas as pd
@@ -14,30 +14,30 @@ logger = logging.getLogger(__name__)
 
 def calculate_indicators(kline_data: List[Dict[str, Any]], indicators: List[str]) -> Dict[str, Any]:
     """
-    计算技术指标
+    
 
     Args:
-        kline_data: K线数据列表，包含timestamp, open, high, low, close, volume
-        indicators: 需要计算的指标列表，如 ['EMA20', 'EMA50', 'MACD', 'RSI14']
+        kline_data: K，timestamp, open, high, low, close, volume
+        indicators: ， ['EMA20', 'EMA50', 'MACD', 'RSI14']
 
     Returns:
-        Dict: 计算结果，格式为 {'EMA20': [...], 'MACD': {...}, ...}
+        Dict: ， {'EMA20': [...], 'MACD': {...}, ...}
     """
     if not kline_data:
         return {}
 
     try:
-        # 转换为DataFrame
+        # DataFrame
         df = pd.DataFrame(kline_data)
 
-        # 确保数据类型正确
+        # 
         df['open'] = pd.to_numeric(df['open'], errors='coerce')
         df['high'] = pd.to_numeric(df['high'], errors='coerce')
         df['low'] = pd.to_numeric(df['low'], errors='coerce')
         df['close'] = pd.to_numeric(df['close'], errors='coerce')
         df['volume'] = pd.to_numeric(df['volume'], errors='coerce')
 
-        # 按时间排序
+        # 
         df = df.sort_values('timestamp')
 
         results = {}
@@ -87,19 +87,19 @@ def calculate_indicators(kline_data: List[Dict[str, Any]], indicators: List[str]
 
 
 def _calculate_ema(df: pd.DataFrame, period: int) -> List[float]:
-    """计算指数移动平均线"""
+    """"""
     ema = ta.ema(df['close'], length=period)
     return ema.fillna(0).tolist()
 
 
 def _calculate_sma(df: pd.DataFrame, period: int) -> List[float]:
-    """计算简单移动平均线"""
+    """"""
     sma = ta.sma(df['close'], length=period)
     return sma.fillna(0).tolist()
 
 
 def _calculate_macd(df: pd.DataFrame) -> Dict[str, List[float]]:
-    """计算MACD指标"""
+    """MACD"""
     macd_data = ta.macd(df['close'])
     if macd_data is None or macd_data.empty:
         return {'macd': [], 'signal': [], 'histogram': []}
@@ -117,17 +117,17 @@ def _calculate_macd(df: pd.DataFrame) -> Dict[str, List[float]]:
 
 
 def _calculate_rsi(df: pd.DataFrame, period: int) -> List[float]:
-    """计算相对强弱指数"""
+    """"""
     rsi = ta.rsi(df['close'], length=period)
-    return rsi.fillna(50).tolist()  # RSI默认值设为50
+    return rsi.fillna(50).tolist()  # RSI50
 
 
 def _calculate_bollinger_bands(df: pd.DataFrame, period: int = 20, std: float = 2) -> Dict[str, List[float]]:
-    """计算布林带"""
+    """"""
     logger.info(f"Starting BOLL calculation with {len(df)} data points, period={period}, std={std}")
 
     try:
-        # 检查输入数据
+        # 
         if len(df) < period:
             logger.error(f"Insufficient data for BOLL calculation: {len(df)} < {period}")
             return None
@@ -145,12 +145,12 @@ def _calculate_bollinger_bands(df: pd.DataFrame, period: int = 20, std: float = 
             logger.error("BOLL calculation returned empty DataFrame")
             return None
 
-        # 打印列名以调试
+        # 
         logger.info(f"BOLL columns: {bb.columns.tolist()}")
         logger.info(f"BOLL shape: {bb.shape}")
         logger.info(f"BOLL sample data:\n{bb.head()}")
 
-        # 尝试不同的列名格式
+        # 
         upper_col = None
         middle_col = None
         lower_col = None
@@ -187,15 +187,15 @@ def _calculate_bollinger_bands(df: pd.DataFrame, period: int = 20, std: float = 
 
 
 def _calculate_atr(df: pd.DataFrame, period: int) -> List[float]:
-    """计算平均真实波幅"""
+    """"""
     atr = ta.atr(df['high'], df['low'], df['close'], length=period)
     return atr.fillna(0).tolist()
 
 
 def _calculate_vwap(df: pd.DataFrame) -> List[float]:
-    """计算成交量加权平均价"""
+    """"""
     try:
-        # VWAP 需要 DatetimeIndex
+        # VWAP  DatetimeIndex
         # Note: timestamp is stored in seconds (not milliseconds)
         df_copy = df.copy()
         df_copy['datetime'] = pd.to_datetime(df_copy['timestamp'], unit='s')
@@ -210,7 +210,7 @@ def _calculate_vwap(df: pd.DataFrame) -> List[float]:
 
 
 def _calculate_stochastic(df: pd.DataFrame, k_period: int = 14, d_period: int = 3) -> Dict[str, List[float]]:
-    """计算随机震荡指标"""
+    """"""
     stoch = ta.stoch(df['high'], df['low'], df['close'], k=k_period, d=d_period)
     if stoch is None or stoch.empty:
         return {'k': [], 'd': []}
@@ -226,28 +226,28 @@ def _calculate_stochastic(df: pd.DataFrame, k_period: int = 14, d_period: int = 
 
 
 def _calculate_obv(df: pd.DataFrame) -> List[float]:
-    """计算能量潮指标"""
+    """"""
     obv = ta.obv(df['close'], df['volume'])
     return obv.fillna(0).tolist()
 
 
 def get_available_indicators() -> List[Dict[str, str]]:
-    """获取支持的技术指标列表"""
+    """"""
     return [
-        {'name': 'MA5', 'description': '5期简单移动平均线'},
-        {'name': 'MA10', 'description': '10期简单移动平均线'},
-        {'name': 'MA20', 'description': '20期简单移动平均线'},
-        {'name': 'EMA20', 'description': '20期指数移动平均线'},
-        {'name': 'EMA50', 'description': '50期指数移动平均线'},
-        {'name': 'EMA100', 'description': '100期指数移动平均线'},
-        {'name': 'MACD', 'description': '移动平均收敛发散指标'},
-        {'name': 'RSI14', 'description': '14期相对强弱指数'},
-        {'name': 'RSI7', 'description': '7期相对强弱指数'},
-        {'name': 'BOLL', 'description': '布林带'},
-        {'name': 'ATR14', 'description': '14期平均真实波幅'},
-        {'name': 'VWAP', 'description': '成交量加权平均价'},
-        {'name': 'STOCH', 'description': '随机震荡指标'},
-        {'name': 'OBV', 'description': '能量潮指标'},
+        {'name': 'MA5', 'description': '5'},
+        {'name': 'MA10', 'description': '10'},
+        {'name': 'MA20', 'description': '20'},
+        {'name': 'EMA20', 'description': '20'},
+        {'name': 'EMA50', 'description': '50'},
+        {'name': 'EMA100', 'description': '100'},
+        {'name': 'MACD', 'description': ''},
+        {'name': 'RSI14', 'description': '14'},
+        {'name': 'RSI7', 'description': '7'},
+        {'name': 'BOLL', 'description': ''},
+        {'name': 'ATR14', 'description': '14'},
+        {'name': 'VWAP', 'description': ''},
+        {'name': 'STOCH', 'description': ''},
+        {'name': 'OBV', 'description': ''},
     ]
 
 

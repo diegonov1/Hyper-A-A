@@ -445,6 +445,30 @@ class HyperliquidWallet(Base):
     account = relationship("Account")
 
 
+class BinanceApiCredential(Base):
+    """Store Binance API credentials per AI Trader per environment."""
+    __tablename__ = "binance_api_credentials"
+
+    id = Column(Integer, primary_key=True, index=True)
+    account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False, index=True)
+    environment = Column(String(20), nullable=False, default="mainnet")  # "mainnet" | "testnet"
+
+    api_key_encrypted = Column(String(500), nullable=False)
+    api_secret_encrypted = Column(String(500), nullable=False)
+    is_active = Column(String(10), nullable=False, default="true")
+
+    created_at = Column(TIMESTAMP, server_default=func.current_timestamp())
+    updated_at = Column(
+        TIMESTAMP, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
+
+    __table_args__ = (
+        UniqueConstraint('account_id', 'environment', name='uq_binance_credentials_account_environment'),
+    )
+
+    account = relationship("Account")
+
+
 class HyperliquidAccountSnapshot(Base):
     """Store Hyperliquid account state snapshots for audit and analysis"""
     __tablename__ = "hyperliquid_account_snapshots"

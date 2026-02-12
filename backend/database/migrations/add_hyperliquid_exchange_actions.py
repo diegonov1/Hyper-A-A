@@ -2,7 +2,7 @@
 Migration script to add the hyperliquid_exchange_actions table.
 
 Usage:
-    cd /home/wwwroot/hyper-alpha-arena-prod/backend
+    cd /home/wwwroot/binance-trading-bot-prod/backend
     source .venv/bin/activate
     python database/migrations/add_hyperliquid_exchange_actions.py
 """

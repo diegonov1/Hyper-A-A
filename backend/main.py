@@ -25,7 +25,7 @@ from config.settings import DEFAULT_TRADING_CONFIGS
 from version import __version__
 
 app = FastAPI(
-    title="Hyper Alpha Arena API",
+    title="Binance Trading Bot API",
     version=__version__,
     description="Cryptocurrency perpetual contract trading platform with AI-powered decision making"
 )
@@ -370,6 +370,22 @@ def on_startup():
         else:
             print(f"✓ [Upgrade] Global hyperliquid_trading_mode already configured: {config.value}")
 
+        # Step 1b: Initialize binance_trading_mode config if missing (testnet-first safety)
+        binance_config = db.query(SystemConfig).filter(
+            SystemConfig.key == "binance_trading_mode"
+        ).first()
+        if not binance_config:
+            binance_config = SystemConfig(
+                key="binance_trading_mode",
+                value="testnet",
+                description="Global Binance trading environment: 'testnet' or 'mainnet'. Default is testnet for safer rollout."
+            )
+            db.add(binance_config)
+            db.commit()
+            print("✓ [Upgrade] Initialized global binance_trading_mode to 'testnet'")
+        else:
+            print(f"✓ [Upgrade] Global binance_trading_mode already configured: {binance_config.value}")
+
         # Step 2: One-time migration - fix NULL hyperliquid_environment in ai_decision_logs
         # Check if there are any NULL records
         null_count = db.execute(text("""
@@ -484,6 +500,7 @@ def on_shutdown():
 
 # API routes
 from api.market_data_routes import router as market_data_router
+from api.binance_routes import router as binance_router
 from api.order_routes import router as order_router
 from api.account_routes import router as account_router
 from api.config_routes import router as config_router
@@ -509,6 +526,7 @@ from routes.program_routes import router as program_router
 # Removed: AI account routes merged into account_routes (unified AI trader accounts)
 
 app.include_router(market_data_router)
+app.include_router(binance_router)
 app.include_router(order_router)
 app.include_router(account_router)
 app.include_router(config_router)

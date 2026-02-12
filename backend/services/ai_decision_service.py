@@ -539,7 +539,7 @@ FIELD DEPENDENCIES:
 
 
 DECISION_TASK_TEXT = (
-    "You are a systematic trader operating on the Hyper Alpha Arena sandbox (no real funds at risk).\n"
+    "You are a systematic trader operating on the Binance Trading Bot sandbox (no real funds at risk).\n"
     "- Review every open position and decide: buy_to_enter, sell_to_enter, hold, or close_position.\n"
     "- Avoid pyramiding or increasing size unless an exit plan explicitly allows it.\n"
     "- Respect risk: keep new exposure within reasonable fractions of available cash (default ≤ 0.2).\n"
@@ -562,6 +562,7 @@ def _build_prompt_context(
     symbol_order: Optional[List[str]] = None,
     sampling_interval: Optional[int] = None,
     environment: str = "mainnet",
+    exchange: str = "hyperliquid",
     template_text: Optional[str] = None,
     trigger_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
@@ -588,6 +589,7 @@ def _build_prompt_context(
         symbol_order: Ordered list of symbols
         sampling_interval: Sampling interval in seconds
         environment: Trading environment (mainnet/testnet)
+        exchange: Selected execution exchange (hyperliquid/binance)
         template_text: Prompt template text for parsing K-line variables
         trigger_context: Context about what triggered this decision (signal or scheduled)
 
@@ -686,34 +688,60 @@ def _build_prompt_context(
     # Legacy format (kept for backward compatibility with old templates)
     output_format_legacy = OUTPUT_FORMAT_JSON.replace(SYMBOL_PLACEHOLDER, output_symbol_choices or "SYMBOL")
 
-    # Hyperliquid-specific context - Get leverage settings from unified function
-    # This ensures leverage values match the wallet configuration for the current environment
+    # Exchange-specific leverage settings
     if db:
-        from services.hyperliquid_environment import get_leverage_settings
         try:
-            leverage_settings = get_leverage_settings(db, account.id, environment)
+            if exchange == "binance":
+                from services.binance_environment import get_binance_leverage_settings
+                leverage_settings = get_binance_leverage_settings(db, account.id)
+            else:
+                from services.hyperliquid_environment import get_leverage_settings
+                leverage_settings = get_leverage_settings(db, account.id, environment)
             max_leverage = leverage_settings["max_leverage"]
             default_leverage = leverage_settings["default_leverage"]
         except Exception as e:
             logger.warning(f"Failed to get leverage settings for account {account.id}: {e}, using fallback")
-            max_leverage = getattr(account, "max_leverage", 3)
-            default_leverage = getattr(account, "default_leverage", 1)
+            if exchange == "binance":
+                max_leverage = 20
+                default_leverage = 5
+            else:
+                max_leverage = getattr(account, "max_leverage", 3)
+                default_leverage = getattr(account, "default_leverage", 1)
     else:
         # Fallback if db not provided (should not happen in normal operation)
         logger.warning(f"No db session provided to _build_prompt_context, using Account table fallback for leverage")
-        max_leverage = getattr(account, "max_leverage", 3)
-        default_leverage = getattr(account, "default_leverage", 1)
+        if exchange == "binance":
+            max_leverage = 20
+            default_leverage = 5
+        else:
+            max_leverage = getattr(account, "max_leverage", 3)
+            default_leverage = getattr(account, "default_leverage", 1)
 
     # Build complete output format with placeholders replaced
     output_format = OUTPUT_FORMAT_COMPLETE.replace(SYMBOL_PLACEHOLDER, output_symbol_choices or "SYMBOL").replace(MAX_LEVERAGE_PLACEHOLDER, str(max_leverage))
 
-    # Use hyperliquid_state to determine if this is Hyperliquid trading mode
+    # Use account state to determine if this is real trading mode
     if hyperliquid_state and environment in ("testnet", "mainnet"):
-        trading_environment = f"Platform: Hyperliquid Perpetual Contracts | Environment: {environment.upper()}"
+        if exchange == "binance":
+            trading_environment = f"Platform: Binance USD-M Futures | Environment: {environment.upper()}"
+            if environment == "mainnet":
+                real_trading_warning = "⚠️ REAL MONEY TRADING - All decisions execute on live markets"
+            else:
+                real_trading_warning = "Testnet simulation environment (using test funds)"
+            operational_constraints = f"""- USD-M perpetual contract trading with isolated margin
+- Maximum position size: ≤ 25% of available balance per trade
+- Leverage range: 1x to {max_leverage}x (default: {default_leverage}x)
+- Margin call threshold: 80% margin usage
+- Default stop loss: -8% from entry (adjust based on leverage)
+- Default take profit: +15% from entry
+- Place TP/SL immediately after entry fill using reduce-only trigger orders"""
+            margin_info = "\nMargin Mode: Isolated margin (recommended for bot safety)"
+        else:
+            trading_environment = f"Platform: Hyperliquid Perpetual Contracts | Environment: {environment.upper()}"
 
-        if environment == "mainnet":
-            real_trading_warning = "⚠️ REAL MONEY TRADING - All decisions execute on live markets"
-            operational_constraints = f"""- Perpetual contract trading with cross margin
+            if environment == "mainnet":
+                real_trading_warning = "⚠️ REAL MONEY TRADING - All decisions execute on live markets"
+                operational_constraints = f"""- Perpetual contract trading with cross margin
 - Maximum position size: ≤ 25% of available balance per trade
 - Leverage range: 1x to {max_leverage}x (default: {default_leverage}x)
 - Margin call threshold: 80% margin usage (CRITICAL - will auto-liquidate)
@@ -721,18 +749,18 @@ def _build_prompt_context(
 - Default take profit: +20% from entry (adjust based on risk/reward)
 - Liquidation protection: NEVER exceed 70% margin usage
 - Risk management: Monitor unrealized PnL and margin usage before each trade"""
-        else:  # testnet
-            real_trading_warning = "Testnet simulation environment (using test funds)"
-            operational_constraints = f"""- Perpetual contract trading with cross margin (testnet mode)
+            else:  # testnet
+                real_trading_warning = "Testnet simulation environment (using test funds)"
+                operational_constraints = f"""- Perpetual contract trading with cross margin (testnet mode)
 - Default position size: ≤ 30% of available balance per trade
 - Leverage range: 1x to {max_leverage}x (default: {default_leverage}x)
 - Margin call threshold: 80% margin usage
 - Default stop loss: -8% from entry (adjust based on leverage)
 - Default take profit: +15% from entry
 - Liquidation protection: avoid exceeding 70% margin usage"""
+            margin_info = "\nMargin Mode: Cross margin (shared across all positions)"
 
         leverage_constraints = f"- Leverage range: 1x to {max_leverage}x (default: {default_leverage}x)"
-        margin_info = "\nMargin Mode: Cross margin (shared across all positions)"
     else:
         trading_environment = "Platform: Paper Trading Simulation"
         real_trading_warning = "Sandbox environment (no real funds at risk)"
@@ -823,101 +851,104 @@ def _build_prompt_context(
     # and avoid flip-flop behavior (rapid position reversals)
     recent_trades_summary = "No recent trade history available"
     if hyperliquid_state and environment in ("testnet", "mainnet"):
-        try:
-            # Get trading client to fetch recent closed trades (use cached client for performance)
-            from services.hyperliquid_trading_client import get_cached_trading_client
-            from database.connection import SessionLocal
+        if exchange != "hyperliquid":
+            recent_trades_summary = "Recent trade history is not available in this prompt mode for the selected exchange."
+        else:
+            try:
+                # Get trading client to fetch recent closed trades (use cached client for performance)
+                from services.hyperliquid_trading_client import get_cached_trading_client
+                from database.connection import SessionLocal
 
-            # Get account's Hyperliquid wallet configuration
-            with SessionLocal() as db_session:
-                from database.models import HyperliquidWallet
-                wallet = db_session.query(HyperliquidWallet).filter(
-                    HyperliquidWallet.account_id == account.id,
-                    HyperliquidWallet.environment == environment,
-                    HyperliquidWallet.is_active == "true"
-                ).first()
+                # Get account's Hyperliquid wallet configuration
+                with SessionLocal() as db_session:
+                    from database.models import HyperliquidWallet
+                    wallet = db_session.query(HyperliquidWallet).filter(
+                        HyperliquidWallet.account_id == account.id,
+                        HyperliquidWallet.environment == environment,
+                        HyperliquidWallet.is_active == "true"
+                    ).first()
 
-                if wallet:
-                    # Decrypt private key
-                    from utils.encryption import decrypt_private_key
-                    try:
-                        private_key = decrypt_private_key(wallet.private_key_encrypted)
-                    except Exception as decrypt_error:
-                        logger.error(f"Failed to decrypt private key: {decrypt_error}")
-                        recent_trades_summary = "Error: Failed to decrypt wallet private key"
-                        raise
+                    if wallet:
+                        # Decrypt private key
+                        from utils.encryption import decrypt_private_key
+                        try:
+                            private_key = decrypt_private_key(wallet.private_key_encrypted)
+                        except Exception as decrypt_error:
+                            logger.error(f"Failed to decrypt private key: {decrypt_error}")
+                            recent_trades_summary = "Error: Failed to decrypt wallet private key"
+                            raise
 
-                    # Initialize trading client (cached for ~8s cold start savings)
-                    client = get_cached_trading_client(
-                        account_id=account.id,
-                        private_key=private_key,
-                        environment=environment,
-                        wallet_address=wallet.wallet_address
-                    )
+                        # Initialize trading client (cached for ~8s cold start savings)
+                        client = get_cached_trading_client(
+                            account_id=account.id,
+                            private_key=private_key,
+                            environment=environment,
+                            wallet_address=wallet.wallet_address
+                        )
 
-                    # Get recent closed trades (last 5)
-                    recent_trades = client.get_recent_closed_trades(db_session, limit=5)
+                        # Get recent closed trades (last 5)
+                        recent_trades = client.get_recent_closed_trades(db_session, limit=5)
 
-                    # Get open orders
-                    open_orders = client.get_open_orders(db_session)
+                        # Get open orders
+                        open_orders = client.get_open_orders(db_session)
 
-                    # Build recent trades section
-                    trades_section = ""
-                    if recent_trades:
-                        trade_lines = ["Recent closed trades (last 5 positions):"]
-                        for trade in recent_trades:
-                            symbol = trade.get('symbol', 'UNKNOWN')
-                            side = trade.get('side', 'Unknown')
-                            close_time = trade.get('close_time', 'N/A')
-                            close_price = trade.get('close_price', 0)
-                            realized_pnl = trade.get('realized_pnl', 0)
-                            direction = trade.get('direction', '')
+                        # Build recent trades section
+                        trades_section = ""
+                        if recent_trades:
+                            trade_lines = ["Recent closed trades (last 5 positions):"]
+                            for trade in recent_trades:
+                                symbol = trade.get('symbol', 'UNKNOWN')
+                                side = trade.get('side', 'Unknown')
+                                close_time = trade.get('close_time', 'N/A')
+                                close_price = trade.get('close_price', 0)
+                                realized_pnl = trade.get('realized_pnl', 0)
+                                direction = trade.get('direction', '')
 
-                            pnl_str = f"+${realized_pnl:,.2f}" if realized_pnl >= 0 else f"-${abs(realized_pnl):,.2f}"
-                            trade_lines.append(
-                                f"- {symbol} {side}: Closed at {close_time} @ ${close_price:,.2f} | P&L: {pnl_str} | {direction}"
-                            )
-                        trades_section = "\n".join(trade_lines)
+                                pnl_str = f"+${realized_pnl:,.2f}" if realized_pnl >= 0 else f"-${abs(realized_pnl):,.2f}"
+                                trade_lines.append(
+                                    f"- {symbol} {side}: Closed at {close_time} @ ${close_price:,.2f} | P&L: {pnl_str} | {direction}"
+                                )
+                            trades_section = "\n".join(trade_lines)
+                        else:
+                            trades_section = "Recent closed trades: No recent closed trades found"
+
+                        # Build open orders section
+                        orders_section = ""
+                        if open_orders:
+                            # Limit to 10 most recent orders to avoid prompt bloat
+                            display_orders = open_orders[:10]
+                            order_lines = [f"\nOpen orders ({len(open_orders)} pending):"]
+                            for order in display_orders:
+                                symbol = order.get('symbol', 'UNKNOWN')
+                                direction = order.get('direction', 'Unknown')
+                                order_type = order.get('order_type', 'Limit')
+                                order_id = order.get('order_id', 'N/A')
+                                price = order.get('price', 0)
+                                size = order.get('size', 0)
+                                order_value = order.get('order_value', 0)
+                                reduce_only = "Yes" if order.get('reduce_only', False) else "No"
+                                trigger_condition = order.get('trigger_condition')
+                                order_time = order.get('order_time', 'N/A')
+
+                                # Build trigger info
+                                trigger_info = f"Trigger: {trigger_condition}" if trigger_condition else "Trigger: None"
+
+                                order_lines.append(
+                                    f"- {symbol} {direction}: {order_type} Order #{order_id} @ ${price:,.2f} | "
+                                    f"Size: {size:.5f} | Value: ${order_value:,.2f} | Reduce Only: {reduce_only} | "
+                                    f"{trigger_info} | Placed: {order_time}"
+                                )
+                            orders_section = "\n".join(order_lines)
+                        else:
+                            orders_section = "\nOpen orders: No open orders"
+
+                        # Combine both sections (Open Orders first, then Recent Trades)
+                        recent_trades_summary = orders_section + "\n\n" + trades_section
                     else:
-                        trades_section = "Recent closed trades: No recent closed trades found"
-
-                    # Build open orders section
-                    orders_section = ""
-                    if open_orders:
-                        # Limit to 10 most recent orders to avoid prompt bloat
-                        display_orders = open_orders[:10]
-                        order_lines = [f"\nOpen orders ({len(open_orders)} pending):"]
-                        for order in display_orders:
-                            symbol = order.get('symbol', 'UNKNOWN')
-                            direction = order.get('direction', 'Unknown')
-                            order_type = order.get('order_type', 'Limit')
-                            order_id = order.get('order_id', 'N/A')
-                            price = order.get('price', 0)
-                            size = order.get('size', 0)
-                            order_value = order.get('order_value', 0)
-                            reduce_only = "Yes" if order.get('reduce_only', False) else "No"
-                            trigger_condition = order.get('trigger_condition')
-                            order_time = order.get('order_time', 'N/A')
-
-                            # Build trigger info
-                            trigger_info = f"Trigger: {trigger_condition}" if trigger_condition else "Trigger: None"
-
-                            order_lines.append(
-                                f"- {symbol} {direction}: {order_type} Order #{order_id} @ ${price:,.2f} | "
-                                f"Size: {size:.5f} | Value: ${order_value:,.2f} | Reduce Only: {reduce_only} | "
-                                f"{trigger_info} | Placed: {order_time}"
-                            )
-                        orders_section = "\n".join(order_lines)
-                    else:
-                        orders_section = "\nOpen orders: No open orders"
-
-                    # Combine both sections (Open Orders first, then Recent Trades)
-                    recent_trades_summary = orders_section + "\n\n" + trades_section
-                else:
-                    recent_trades_summary = "Wallet not configured for this environment"
-        except Exception as e:
-            logger.warning(f"Failed to get recent trades summary: {e}", exc_info=True)
-            recent_trades_summary = f"Error fetching trade history: {str(e)[:100]}"
+                        recent_trades_summary = "Wallet not configured for this environment"
+            except Exception as e:
+                logger.warning(f"Failed to get recent trades summary: {e}", exc_info=True)
+                recent_trades_summary = f"Error fetching trade history: {str(e)[:100]}"
 
     # ============================================================================
     # K-LINE AND TECHNICAL INDICATORS PROCESSING
@@ -1365,6 +1396,8 @@ def call_ai_for_decision(
     hyperliquid_state: Optional[Dict[str, Any]] = None,
     symbol_metadata: Optional[Dict[str, Any]] = None,
     trigger_context: Optional[Dict[str, Any]] = None,
+    exchange: str = "hyperliquid",
+    execution_environment: Optional[str] = None,
 ) -> Optional[List[Dict[str, Any]]]:
     """Call AI model API to get trading decision
 
@@ -1379,15 +1412,20 @@ def call_ai_for_decision(
         hyperliquid_state: Optional Hyperliquid account state for real trading
         symbol_metadata: Optional mapping of symbol -> display name overrides
         trigger_context: Optional context about what triggered this decision (signal or scheduled)
+        exchange: Selected execution exchange (hyperliquid/binance)
+        execution_environment: Optional explicit environment override (testnet/mainnet)
     """
     # Check if this is a default API key
     if _is_default_api_key(account.api_key):
         logger.info(f"Skipping AI trading for account {account.name} - using default API key")
         return None
 
-    # IMPORTANT: Get global trading mode at the start
-    from services.hyperliquid_environment import get_global_trading_mode
-    global_environment = get_global_trading_mode(db)
+    if execution_environment in ("testnet", "mainnet"):
+        global_environment = execution_environment
+    else:
+        # IMPORTANT: fallback to Hyperliquid global mode for backward compatibility
+        from services.hyperliquid_environment import get_global_trading_mode
+        global_environment = get_global_trading_mode(db)
 
     try:
         news_summary = fetch_latest_news()
@@ -1438,6 +1476,7 @@ def call_ai_for_decision(
             symbol_order=symbol_order,
             sampling_interval=sampling_interval,
             environment=global_environment,
+            exchange=exchange,
             template_text=template.template_text,
             trigger_context=trigger_context,
         )
@@ -1469,6 +1508,7 @@ def call_ai_for_decision(
             symbol_order=symbol_order,
             sampling_interval=sampling_interval,
             environment=global_environment,
+            exchange=exchange,
             template_text=template.template_text,
             trigger_context=trigger_context,
         )
@@ -1980,6 +2020,7 @@ def save_ai_decision(
     hyperliquid_order_id: Optional[str] = None,
     tp_order_id: Optional[str] = None,
     sl_order_id: Optional[str] = None,
+    execution_environment: Optional[str] = None,
 ) -> None:
     """Save AI decision to the decision log"""
     try:
@@ -2027,10 +2068,12 @@ def save_ai_decision(
                 if total_balance > 0:
                     prev_portion = symbol_value / total_balance
 
-        # Get Hyperliquid environment for decision tagging
-        # IMPORTANT: Always use global trading mode for accurate logging
-        from services.hyperliquid_environment import get_global_trading_mode
-        hyperliquid_environment = get_global_trading_mode(db)
+        # Environment tag (used by existing analytics fields)
+        if execution_environment in ("testnet", "mainnet"):
+            hyperliquid_environment = execution_environment
+        else:
+            from services.hyperliquid_environment import get_global_trading_mode
+            hyperliquid_environment = get_global_trading_mode(db)
 
         # Create decision log entry
         decision_log = AIDecisionLog(

@@ -2,7 +2,7 @@
 Migration script to add wallet_address column to Hyperliquid snapshot tables.
 
 Usage:
-    cd /home/wwwroot/hyper-alpha-arena-prod/backend
+    cd /home/wwwroot/binance-trading-bot-prod/backend
     source .venv/bin/activate
     python database/migrations/add_wallet_address_to_snapshot_tables.py
 """

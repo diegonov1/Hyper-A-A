@@ -31,11 +31,16 @@ from services.hyperliquid_symbol_service import (
     get_available_symbol_map as get_hyperliquid_symbol_map,
     get_symbol_display as get_hyperliquid_symbol_display,
 )
+from services.exchange_router import (
+    get_selected_exchange_for_account,
+    get_fallback_exchange,
+)
 
 
 logger = logging.getLogger(__name__)
 
 AI_TRADING_SYMBOLS: List[str] = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE"]
+BINANCE_AI_TRADING_SYMBOLS: List[str] = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE"]
 ORACLE_PRICE_DEVIATION_LIMIT_PERCENT = 1.0
 
 
@@ -98,6 +103,28 @@ def _get_market_prices(symbols: List[str]) -> Dict[str, float]:
     return prices
 
 
+def _get_market_prices_for_exchange(
+    symbols: List[str],
+    exchange: str,
+    environment: str,
+) -> Dict[str, float]:
+    prices: Dict[str, float] = {}
+    for symbol in symbols:
+        try:
+            price = float(get_last_price(symbol, exchange, environment=environment))
+            if price > 0:
+                prices[symbol] = price
+        except Exception as err:
+            logger.warning(
+                "Failed to get %s price for %s (%s): %s",
+                exchange,
+                symbol,
+                environment,
+                err,
+            )
+    return prices
+
+
 def _select_side(db: Session, account: Account, symbol: str, max_value: float) -> Optional[Tuple[str, int]]:
     """Select random trading side and quantity for legacy random trading"""
     market = "CRYPTO"
@@ -146,7 +173,6 @@ def place_ai_driven_crypto_order(max_ratio: float = 0.2, account_ids: Optional[I
     """
     db = SessionLocal()
     try:
-        # Handle single account strategy trigger
         if account_id is not None:
             account = db.query(Account).filter(Account.id == account_id).first()
             if not account or account.is_active != "true" or account.auto_trading_enabled != "true":
@@ -158,7 +184,6 @@ def place_ai_driven_crypto_order(max_ratio: float = 0.2, account_ids: Optional[I
             if not accounts:
                 logger.debug("No available accounts, skipping AI trading")
                 return
-
             if account_ids is not None:
                 id_set = {int(acc_id) for acc_id in account_ids}
                 accounts = [acc for acc in accounts if acc.id in id_set]
@@ -166,37 +191,13 @@ def place_ai_driven_crypto_order(max_ratio: float = 0.2, account_ids: Optional[I
                     logger.debug("No matching accounts for provided IDs: %s", account_ids)
                     return
 
-        # Get latest market prices once for all accounts
-        prices = _get_market_prices(AI_TRADING_SYMBOLS)
-        if not prices:
-            logger.warning("Failed to fetch market prices, skipping AI trading")
-            return
-
-        # Get all symbols with available sampling data
-        from services.sampling_pool import sampling_pool
-        available_symbols = []
-        for sym in SUPPORTED_SYMBOLS.keys():
-            samples_data = sampling_pool.get_samples(sym)
-            if samples_data:
-                available_symbols.append(sym)
-
-        if available_symbols:
-            logger.info(f"Available sampling pool symbols: {', '.join(available_symbols)}")
-        else:
-            logger.warning("No sampling data available for any symbol")
-
-        # Iterate through all active accounts
         for account in accounts:
             try:
-                logger.info(f"Processing AI trading for account: {account.name}")
-
-                # All accounts now use Hyperliquid trading pipeline
-                logger.info(f"Processing Hyperliquid trading for account {account.name}")
-                place_ai_driven_hyperliquid_order(account_id=account.id)
-
+                selected_exchange = get_selected_exchange_for_account(db, account)
+                logger.info("Processing AI trading for account %s (exchange=%s)", account.name, selected_exchange)
+                place_ai_driven_exchange_order(account_id=account.id)
             except Exception as account_err:
                 logger.error(f"AI-driven order placement failed for account {account.name}: {account_err}", exc_info=True)
-                # Continue with next account even if one fails
 
     except Exception as err:
         logger.error(f"AI-driven order placement failed: {err}", exc_info=True)
@@ -262,6 +263,56 @@ def place_random_crypto_order(max_ratio: float = 0.2) -> None:
     except Exception as err:
         logger.error("Auto order placement failed: %s", err)
         db.rollback()
+    finally:
+        db.close()
+
+
+def place_ai_driven_exchange_order(
+    *,
+    account_id: int,
+    bypass_auto_trading: bool = False,
+    trigger_context: Optional[Dict[str, Any]] = None,
+) -> None:
+    """
+    Route AI execution to the selected exchange for this account.
+    """
+    db = SessionLocal()
+    try:
+        account = db.query(Account).filter(Account.id == account_id).first()
+        if not account or account.is_active != "true":
+            logger.debug("Account %s not found or inactive", account_id)
+            return
+
+        selected_exchange = get_selected_exchange_for_account(db, account)
+
+        if selected_exchange == "binance":
+            try:
+                place_ai_driven_binance_order(
+                    account_id=account_id,
+                    bypass_auto_trading=bypass_auto_trading,
+                    trigger_context=trigger_context,
+                )
+                return
+            except Exception as binance_err:
+                logger.error(
+                    "Binance execution failed for account %s: %s",
+                    account_id,
+                    binance_err,
+                    exc_info=True,
+                )
+                fallback = get_fallback_exchange(db)
+                if fallback != "hyperliquid":
+                    return
+                logger.warning(
+                    "Applying configured fallback exchange=hyperliquid for account %s",
+                    account_id,
+                )
+
+        place_ai_driven_hyperliquid_order(
+            account_id=account_id,
+            bypass_auto_trading=bypass_auto_trading,
+            trigger_context=trigger_context,
+        )
     finally:
         db.close()
 
@@ -423,7 +474,10 @@ def place_ai_driven_hyperliquid_order(
                 logger.error(f"Failed to get Hyperliquid client for {account.name}: {client_err}")
                 continue
             wallet_address = getattr(client, "wallet_address", None)
-            decision_kwargs = {"wallet_address": wallet_address}
+            decision_kwargs = {
+                "wallet_address": wallet_address,
+                "execution_environment": environment,
+            }
 
             # Get tracking fields for decision analysis (failures should not affect core business)
             try:
@@ -518,6 +572,8 @@ def place_ai_driven_hyperliquid_order(
                 hyperliquid_state=hyperliquid_state,
                 symbol_metadata=prompt_symbol_metadata,
                 trigger_context=trigger_context,
+                exchange="hyperliquid",
+                execution_environment=environment,
             )
 
             if not decisions:
@@ -1164,3 +1220,350 @@ def place_ai_driven_hyperliquid_order(
 
 
 HYPERLIQUID_TRADE_JOB_ID = "hyperliquid_ai_trade"
+BINANCE_TRADE_JOB_ID = "binance_ai_trade"
+
+
+def place_ai_driven_binance_order(
+    account_ids: Optional[Iterable[int]] = None,
+    account_id: Optional[int] = None,
+    bypass_auto_trading: bool = False,
+    trigger_context: Optional[Dict[str, Any]] = None,
+) -> None:
+    """
+    Place Binance USD-M futures orders based on AI decisions.
+    """
+    try:
+        from services.binance_environment import (
+            get_binance_client,
+            get_global_binance_mode,
+            get_binance_leverage_settings,
+        )
+    except Exception as e:
+        logger.error("Error importing Binance services: %s", e, exc_info=True)
+        raise
+
+    accounts: List[Account] = []
+    db = SessionLocal()
+    try:
+        if account_id is not None:
+            account = db.query(Account).filter(Account.id == account_id).first()
+            if not account or account.is_active != "true":
+                logger.debug("Account %s not found or inactive", account_id)
+                return
+            if not bypass_auto_trading and getattr(account, "auto_trading_enabled", "false") != "true":
+                logger.debug(
+                    "Account %s auto trading disabled - skipping Binance AI order",
+                    account_id,
+                )
+                return
+            accounts = [account]
+        else:
+            accounts = db.query(Account).filter(
+                Account.is_active == "true",
+                Account.auto_trading_enabled == "true",
+            ).all()
+            if account_ids is not None:
+                id_set = {int(acc_id) for acc_id in account_ids}
+                accounts = [acc for acc in accounts if acc.id in id_set]
+            if not accounts:
+                return
+    finally:
+        db.close()
+
+    symbol_whitelist = set(BINANCE_AI_TRADING_SYMBOLS)
+    prompt_symbol_metadata = {
+        sym: {"name": SUPPORTED_SYMBOLS.get(sym, sym)} for sym in BINANCE_AI_TRADING_SYMBOLS
+    }
+
+    for account in accounts:
+        db = SessionLocal()
+        try:
+            validation_errors: List[str] = []
+            if not account.api_key or not account.model:
+                validation_errors.append("AI model/API key not configured")
+
+            from database.models import AccountStrategyConfig
+            strategy = db.query(AccountStrategyConfig).filter(
+                AccountStrategyConfig.account_id == account.id,
+                AccountStrategyConfig.enabled == "true",
+            ).first()
+            if not strategy:
+                validation_errors.append("trading strategy not configured or disabled")
+
+            if validation_errors:
+                logger.warning(
+                    "AI Trader '%s' (ID: %s) skipped - %s",
+                    account.name,
+                    account.id,
+                    ", ".join(validation_errors),
+                )
+                continue
+
+            environment = get_global_binance_mode(db)
+            logger.info(
+                "Processing Binance trading for account: %s (environment: %s)",
+                account.name,
+                environment,
+            )
+
+            try:
+                client = get_binance_client(db, account.id, override_environment=environment)
+            except Exception as cred_err:
+                logger.warning(
+                    "AI Trader '%s' (ID: %s) skipped - Binance credentials missing/invalid (%s).",
+                    account.name,
+                    account.id,
+                    cred_err,
+                )
+                raise
+
+            decision_kwargs: Dict[str, Any] = {
+                "wallet_address": None,
+                "execution_environment": environment,
+            }
+
+            try:
+                from database.models import AccountPromptBinding
+                binding = db.query(AccountPromptBinding).filter_by(account_id=account.id).first()
+                decision_kwargs["prompt_template_id"] = binding.prompt_template_id if binding else None
+            except Exception:
+                decision_kwargs["prompt_template_id"] = None
+
+            decision_kwargs["signal_trigger_id"] = (
+                trigger_context.get("signal_trigger_id") if trigger_context else None
+            )
+
+            account_state = client.get_account_state(db)
+            available_balance = float(account_state.get("available_balance", 0) or 0)
+            total_equity = float(account_state.get("total_equity", 0) or 0)
+            margin_usage = float(account_state.get("margin_usage_percent", 0) or 0)
+
+            positions = client.get_positions(db, include_timing=True)
+            prices = _get_market_prices_for_exchange(
+                BINANCE_AI_TRADING_SYMBOLS,
+                "binance",
+                environment,
+            )
+            if not prices:
+                logger.warning("Failed to fetch Binance prices, skipping account %s", account.name)
+                continue
+
+            if total_equity <= 0 and len(positions) == 0:
+                logger.warning(
+                    "Account %s skipped on Binance - no balance and no open positions.",
+                    account.name,
+                )
+                continue
+
+            portfolio = {
+                "cash": available_balance,
+                "frozen_cash": account_state.get("used_margin", 0),
+                "positions": {},
+                "total_assets": total_equity,
+            }
+            for pos in positions:
+                symbol = pos.get("coin")
+                if not symbol:
+                    continue
+                portfolio["positions"][symbol] = {
+                    "quantity": pos.get("szi", 0),
+                    "avg_cost": pos.get("entry_px", 0),
+                    "current_value": pos.get("position_value", 0),
+                    "unrealized_pnl": pos.get("unrealized_pnl", 0),
+                    "leverage": pos.get("leverage", 1),
+                }
+
+            # Reuse the same prompt context structure (generic enough for exchange adapters).
+            exchange_state = {
+                "total_equity": total_equity,
+                "available_balance": available_balance,
+                "used_margin": account_state.get("used_margin", 0),
+                "margin_usage_percent": margin_usage,
+                "maintenance_margin": account_state.get("maintenance_margin", 0),
+                "positions": positions,
+            }
+
+            decisions = call_ai_for_decision(
+                db,
+                account,
+                portfolio,
+                prices,
+                symbols=BINANCE_AI_TRADING_SYMBOLS,
+                hyperliquid_state=exchange_state,
+                symbol_metadata=prompt_symbol_metadata,
+                trigger_context=trigger_context,
+                exchange="binance",
+                execution_environment=environment,
+            )
+            if not decisions:
+                logger.warning("Failed to get AI decision for Binance account %s", account.name)
+                continue
+
+            leverage_settings = get_binance_leverage_settings(db, account.id)
+            max_leverage = int(leverage_settings["max_leverage"])
+            default_leverage = int(leverage_settings["default_leverage"])
+
+            decision_priority = {"close": 0, "sell": 1, "buy": 2, "hold": 3}
+            ordered_decisions = sorted(
+                decisions,
+                key=lambda d: decision_priority.get(str(d.get("operation", "")).lower(), 4),
+            )
+
+            for decision in ordered_decisions:
+                if not isinstance(decision, dict):
+                    continue
+
+                decision_log_kwargs = dict(decision_kwargs)
+                operation = str(decision.get("operation", "")).lower()
+                symbol = str(decision.get("symbol", "")).upper()
+                target_portion = float(decision.get("target_portion_of_balance", 0) or 0)
+                leverage = int(decision.get("leverage", default_leverage) or default_leverage)
+                max_price = decision.get("max_price")
+                min_price = decision.get("min_price")
+
+                if operation not in ["buy", "sell", "close", "hold"]:
+                    save_ai_decision(db, account, decision, portfolio, executed=False, **decision_log_kwargs)
+                    continue
+
+                if operation == "hold":
+                    save_ai_decision(db, account, decision, portfolio, executed=True, **decision_log_kwargs)
+                    continue
+
+                if symbol not in symbol_whitelist:
+                    logger.warning("Symbol '%s' not in Binance whitelist for %s", symbol, account.name)
+                    save_ai_decision(db, account, decision, portfolio, executed=False, **decision_log_kwargs)
+                    continue
+
+                if target_portion <= 0 or target_portion > 1:
+                    save_ai_decision(db, account, decision, portfolio, executed=False, **decision_log_kwargs)
+                    continue
+
+                if leverage < 1 or leverage > max_leverage:
+                    leverage = default_leverage
+
+                market_price = prices.get(symbol)
+                if not market_price or market_price <= 0:
+                    save_ai_decision(db, account, decision, portfolio, executed=False, **decision_log_kwargs)
+                    continue
+
+                time_in_force = decision.get("time_in_force", "Ioc")
+                take_profit_price = decision.get("take_profit_price")
+                stop_loss_price = decision.get("stop_loss_price")
+                tp_execution = decision.get("tp_execution", "limit")
+                sl_execution = decision.get("sl_execution", "limit")
+
+                order_result = None
+
+                if operation in ("buy", "sell"):
+                    margin = available_balance * target_portion
+                    order_value = margin * leverage
+                    quantity = round(order_value / market_price, 6)
+                    if quantity <= 0:
+                        save_ai_decision(db, account, decision, portfolio, executed=False, **decision_log_kwargs)
+                        continue
+
+                    if operation == "buy":
+                        price_to_use = float(max_price) if max_price is not None else market_price * 1.001
+                        order_result = client.place_order_with_tpsl(
+                            db=db,
+                            symbol=symbol,
+                            is_buy=True,
+                            size=quantity,
+                            price=price_to_use,
+                            leverage=leverage,
+                            time_in_force=time_in_force,
+                            reduce_only=False,
+                            take_profit_price=take_profit_price,
+                            stop_loss_price=stop_loss_price,
+                            tp_execution=tp_execution,
+                            sl_execution=sl_execution,
+                        )
+                    else:
+                        price_to_use = float(min_price) if min_price is not None else market_price * 0.999
+                        order_result = client.place_order_with_tpsl(
+                            db=db,
+                            symbol=symbol,
+                            is_buy=False,
+                            size=quantity,
+                            price=price_to_use,
+                            leverage=leverage,
+                            time_in_force=time_in_force,
+                            reduce_only=False,
+                            take_profit_price=take_profit_price,
+                            stop_loss_price=stop_loss_price,
+                            tp_execution=tp_execution,
+                            sl_execution=sl_execution,
+                        )
+
+                elif operation == "close":
+                    should_cancel_orders = target_portion >= 1.0
+                    position_to_close = next((p for p in positions if p.get("coin") == symbol), None)
+                    if not position_to_close:
+                        if should_cancel_orders:
+                            pending_orders = client.get_open_orders(db, symbol=symbol)
+                            for order in pending_orders:
+                                oid = order.get("order_id")
+                                if oid:
+                                    client.cancel_order(db, oid, symbol)
+                            if pending_orders:
+                                save_ai_decision(db, account, decision, portfolio, executed=True, **decision_log_kwargs)
+                                continue
+                        save_ai_decision(db, account, decision, portfolio, executed=False, **decision_log_kwargs)
+                        continue
+
+                    szi = float(position_to_close.get("szi", 0) or 0)
+                    position_size = abs(szi)
+                    if position_size <= 0:
+                        save_ai_decision(db, account, decision, portfolio, executed=False, **decision_log_kwargs)
+                        continue
+
+                    close_size = position_size * target_portion
+                    is_long = szi > 0
+                    if is_long:
+                        close_price = float(min_price) if min_price is not None else market_price * 0.995
+                    else:
+                        close_price = float(max_price) if max_price is not None else market_price * 1.005
+
+                    order_result = client.place_order_with_tpsl(
+                        db=db,
+                        symbol=symbol,
+                        is_buy=(not is_long),
+                        size=close_size,
+                        price=close_price,
+                        leverage=1,
+                        time_in_force="Ioc",
+                        reduce_only=True,
+                        take_profit_price=None,
+                        stop_loss_price=None,
+                    )
+
+                    if (
+                        order_result
+                        and order_result.get("status") == "filled"
+                        and should_cancel_orders
+                    ):
+                        remaining_orders = client.get_open_orders(db, symbol=symbol)
+                        for order in remaining_orders:
+                            oid = order.get("order_id")
+                            if oid:
+                                client.cancel_order(db, oid, symbol)
+
+                if order_result:
+                    order_status = order_result.get("status")
+                    if order_status in ("filled", "resting"):
+                        decision_log_kwargs["hyperliquid_order_id"] = order_result.get("order_id")
+                        decision_log_kwargs["tp_order_id"] = order_result.get("tp_order_id")
+                        decision_log_kwargs["sl_order_id"] = order_result.get("sl_order_id")
+                        save_ai_decision(db, account, decision, portfolio, executed=True, **decision_log_kwargs)
+                    else:
+                        save_ai_decision(db, account, decision, portfolio, executed=False, **decision_log_kwargs)
+                else:
+                    save_ai_decision(db, account, decision, portfolio, executed=False, **decision_log_kwargs)
+
+        except Exception as account_err:
+            logger.error("Error processing Binance account %s: %s", account.name, account_err, exc_info=True)
+            db.rollback()
+            if account_id is not None:
+                raise
+        finally:
+            db.close()

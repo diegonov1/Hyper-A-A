@@ -19,6 +19,7 @@ from database.models import (
     TradingProgram, AccountProgramBinding, ProgramExecutionLog,
     Account, HyperliquidWallet
 )
+from services.exchange_router import get_selected_exchange_for_account
 from program_trader.executor import execute_strategy
 from program_trader.models import MarketData, ActionType
 from program_trader.data_provider import DataProvider
@@ -254,22 +255,39 @@ class ProgramExecutionService:
 
             logger.info(f"[ProgramExecution] Executing: {program.name} via {account.name} (trigger: {trigger_type})")
 
-            # Get wallet address for this account
-            wallet_address = self._get_wallet_address(db, account)
-
-            # Get trading environment and create trading client
-            from services.hyperliquid_environment import get_global_trading_mode, get_hyperliquid_client, get_leverage_settings
-
-            environment = get_global_trading_mode(db)
+            selected_exchange = get_selected_exchange_for_account(db, account)
+            wallet_address = self._get_wallet_address(db, account, selected_exchange)
+            environment = "mainnet"
             trading_client = None
-            if environment and wallet_address:
-                try:
-                    trading_client = get_hyperliquid_client(db, account.id, override_environment=environment)
-                except Exception as e:
-                    logger.warning(f"[ProgramExecution] Failed to create trading client: {e}")
 
-            # Get leverage settings (same as AI Trader)
-            leverage_settings = get_leverage_settings(db, account.id, environment or "mainnet")
+            if selected_exchange == "binance":
+                from services.binance_environment import (
+                    get_global_binance_mode,
+                    get_binance_client,
+                    get_binance_leverage_settings,
+                )
+                environment = get_global_binance_mode(db)
+                try:
+                    trading_client = get_binance_client(db, account.id, override_environment=environment)
+                except Exception as e:
+                    logger.warning(f"[ProgramExecution] Failed to create Binance client: {e}")
+                    return
+                leverage_settings = get_binance_leverage_settings(db, account.id)
+            else:
+                from services.hyperliquid_environment import (
+                    get_global_trading_mode,
+                    get_hyperliquid_client,
+                    get_leverage_settings,
+                )
+                environment = get_global_trading_mode(db) or "mainnet"
+                if wallet_address:
+                    try:
+                        trading_client = get_hyperliquid_client(db, account.id, override_environment=environment)
+                    except Exception as e:
+                        logger.warning(f"[ProgramExecution] Failed to create Hyperliquid client: {e}")
+                        return
+                leverage_settings = get_leverage_settings(db, account.id, environment)
+
             max_leverage = leverage_settings["max_leverage"]
             default_leverage = leverage_settings["default_leverage"]
 
@@ -309,19 +327,28 @@ class ProgramExecutionService:
             # Log execution with full context for analysis
             log_id = self._log_execution(
                 db, binding, symbol, pool, wallet_address, result, params,
-                data_provider, market_data, environment or "mainnet", trigger_type
+                data_provider, market_data, environment or "mainnet", trigger_type, selected_exchange
             )
 
             # Handle decision if successful
             if result.success and result.decision:
-                order_result = self._handle_decision(db, binding, result.decision, symbol, wallet_address)
+                order_result = self._handle_decision(
+                    db,
+                    binding,
+                    result.decision,
+                    symbol,
+                    wallet_address,
+                    selected_exchange,
+                    environment or "mainnet",
+                    trading_client,
+                )
                 # Update log with order result and create HyperliquidTrade if filled
                 # Skip for HOLD decisions - they don't execute orders
                 op = result.decision.operation.lower() if hasattr(result.decision, 'operation') else result.decision.action.value
                 if log_id and op != "hold":
                     self._update_log_with_order(
                         db, log_id, order_result, binding, result.decision,
-                        wallet_address, environment or "mainnet"
+                        wallet_address, environment or "mainnet", selected_exchange
                     )
 
         except Exception as e:
@@ -330,8 +357,11 @@ class ProgramExecutionService:
             self._running_bindings[binding_id] = False
             lock.release()
 
-    def _get_wallet_address(self, db, account: Account) -> Optional[str]:
+    def _get_wallet_address(self, db, account: Account, exchange: str = "hyperliquid") -> Optional[str]:
         """Get the active wallet address for an account."""
+        if exchange != "hyperliquid":
+            return None
+
         from services.hyperliquid_environment import get_global_trading_mode
 
         environment = get_global_trading_mode(db)
@@ -421,7 +451,8 @@ class ProgramExecutionService:
         data_provider: Optional[DataProvider],
         market_data,
         environment: str,
-        trigger_type: str = "signal"
+        trigger_type: str = "signal",
+        exchange: str = "hyperliquid",
     ):
         """Log program execution to database with full context for analysis."""
         try:
@@ -451,6 +482,7 @@ class ProgramExecutionService:
 
             market_context = {
                 "input_data": {
+                    "exchange": exchange,
                     "environment": environment,
                     "trigger_symbol": symbol,
                     "trigger_type": trigger_type,
@@ -529,8 +561,9 @@ class ProgramExecutionService:
         order_result: Optional[dict],
         binding: AccountProgramBinding,
         decision,
-        wallet_address: str,
-        environment: str
+        wallet_address: Optional[str],
+        environment: str,
+        exchange: str = "hyperliquid",
     ):
         """Update execution log with order IDs and create HyperliquidTrade if filled."""
         try:
@@ -561,9 +594,9 @@ class ProgramExecutionService:
             db.commit()
             logger.info(f"[ProgramExecution] Updated log {log_id} with order IDs")
 
-            # Create HyperliquidTrade record only if order is filled
+            # Create HyperliquidTrade record only for Hyperliquid filled orders
             order_status = order_result.get('status')
-            if order_status == 'filled':
+            if order_status == 'filled' and exchange == "hyperliquid":
                 self._create_hyperliquid_trade(
                     binding, decision, order_result, wallet_address, environment
                 )
@@ -620,11 +653,14 @@ class ProgramExecutionService:
         binding: AccountProgramBinding,
         decision,
         symbol: str,
-        wallet_address: Optional[str]
+        wallet_address: Optional[str],
+        selected_exchange: str = "hyperliquid",
+        environment: str = "mainnet",
+        trading_client=None,
     ):
         """Handle the decision from program execution - execute actual trade."""
         from program_trader.executor import validate_decision
-        from services.hyperliquid_environment import get_global_trading_mode, get_hyperliquid_client
+        from services.market_data import get_last_price
 
         op = decision.operation.lower() if hasattr(decision, 'operation') else decision.action.value
 
@@ -634,13 +670,11 @@ class ProgramExecutionService:
 
         # Validate decision
         positions_dict = {}
-        environment = get_global_trading_mode(db)
         if hasattr(decision, 'operation'):
             # New Decision format - get positions for validation
-            if environment and wallet_address:
+            if trading_client:
                 try:
-                    client = get_hyperliquid_client(db, binding.account_id, override_environment=environment)
-                    data_provider = DataProvider(db, binding.account_id, environment, client)
+                    data_provider = DataProvider(db, binding.account_id, environment, trading_client)
                     for sym, pos in data_provider.get_positions().items():
                         positions_dict[sym] = {"side": pos.side, "size": pos.size}
                 except Exception as e:
@@ -652,13 +686,13 @@ class ProgramExecutionService:
                 return False
 
         logger.info(
-            f"[ProgramExecution] Binding {binding.id} decision: {op} "
+            f"[ProgramExecution] Binding {binding.id} decision: {op} [{selected_exchange}] "
             f"{decision.symbol} portion={getattr(decision, 'target_portion_of_balance', 0)} "
             f"leverage={decision.leverage}x - {decision.reason}"
         )
 
-        # Check wallet
-        if not wallet_address:
+        # Wallet is only required for Hyperliquid
+        if selected_exchange == "hyperliquid" and not wallet_address:
             logger.error(f"[ProgramExecution] No wallet address for binding {binding.id}")
             return False
 
@@ -667,16 +701,21 @@ class ProgramExecutionService:
             return False
 
         try:
-            # Initialize trading client using correct factory function
-            client = get_hyperliquid_client(db, binding.account_id, override_environment=environment)
+            client = trading_client
+            if not client:
+                if selected_exchange == "binance":
+                    from services.binance_environment import get_binance_client
+                    client = get_binance_client(db, binding.account_id, override_environment=environment)
+                else:
+                    from services.hyperliquid_environment import get_hyperliquid_client
+                    client = get_hyperliquid_client(db, binding.account_id, override_environment=environment)
 
             # Get account info and current market price
             account_info = client.get_account_state(db)
             available_balance = account_info.get("available_balance", 0)
 
-            # Get real-time market price for price bounds enforcement
-            from services.hyperliquid_market_data import get_last_price_from_hyperliquid
-            market_price = get_last_price_from_hyperliquid(decision.symbol, environment)
+            # Get real-time market price using selected exchange market data adapter
+            market_price = get_last_price(decision.symbol, selected_exchange, environment=environment)
             if not market_price or market_price <= 0:
                 market_price = getattr(decision, 'max_price', None) or getattr(decision, 'min_price', None)
             if not market_price:

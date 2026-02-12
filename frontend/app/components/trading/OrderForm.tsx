@@ -79,8 +79,8 @@ export default function OrderForm({
   }
 
   const handlePriceChange = (value: string) => {
-    if (orderType === 'MARKET') return // 市价单不允许手动改价
-    // 只允许数字和一个小数点
+    if (orderType === 'MARKET') return // 
+    // 
     if (!/^\d*\.?\d{0,2}$/.test(value)) return
     
     const numValue = parseFloat(value) || 0
@@ -169,7 +169,7 @@ export default function OrderForm({
         </div>
       </div>
 
-      {/* 订单类型 */}
+      {/*  */}
       <div className="space-y-2">
         <div className="flex items-center gap-1">
           <label className="text-xs text-muted-foreground">Order Type</label>
@@ -190,7 +190,7 @@ export default function OrderForm({
         </Select>
       </div>
 
-      {/* 价格 */}
+      {/*  */}
       <div className="space-y-2">
         <label className="text-xs">Price</label>
         <div className="flex items-center gap-2">
@@ -220,7 +220,7 @@ export default function OrderForm({
         </div>
       </div>
 
-      {/* 数量 */}
+      {/*  */}
       <div className="space-y-2">
         <label className="text-xs">Quantity</label>
         <div className="flex items-center gap-2">
